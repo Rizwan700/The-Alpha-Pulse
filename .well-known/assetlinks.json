@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.rizwan700.twa",
+        "sha256_cert_fingerprints": ["A6:2A:DD:37:45:BF:D0:38:55:64:AB:50:53:75:68:EB:F9:4F:AD:2F:BA:F3:42:75:C2:F5:BD:B3:76:88:8A:B6"]
+      }
+    }]

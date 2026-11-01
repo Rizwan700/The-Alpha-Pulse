@@ -2875,7 +2875,7 @@
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
           <div>
             <label id="brokerIdLabel" style="display:block; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-sec); margin-bottom:5px;">FYERS APP ID (CLIENT ID)</label>
-            <input type="text" id="shoonyaClientIdInp" value="" placeholder="e.g. YOUR_APP_ID-100" class="calc-inp" style="font-size:12px; padding:8px 10px; width:100%;">
+            <input type="text" id="shoonyaClientIdInp" value="HWSWLA7UKW-100" placeholder="e.g. HWSWLA7UKW-100" oninput="updateFyersOAuthLink()" class="calc-inp" style="font-size:12px; padding:8px 10px; width:100%;">
           </div>
           <div>
             <label id="brokerKeyLabel" style="display:block; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-sec); margin-bottom:5px;">FYERS APP SECRET</label>
@@ -2893,13 +2893,13 @@
           </div>
         </div>
 
-        <!-- 1-Click FYERS OAuth Connect Button -->
+        <!-- 1-Click FYERS OAuth Connect Anchor Link (Direct Native Navigation for Android APK) -->
         <div id="fyersActionBox" style="margin-top:14px; margin-bottom:14px;">
-          <button type="button" class="refresh-btn" onclick="launchFyersOAuth()" style="width:100%; font-size:13px; padding:12px 18px; background:linear-gradient(135deg, rgba(0,230,118,0.22) 0%, rgba(0,229,255,0.22) 100%); border:1.5px solid var(--green); color:#00e676; font-weight:800; border-radius:8px; box-shadow:0 0 16px rgba(0,230,118,0.25); cursor:pointer;">
+          <a id="fyersAuthAnchor" href="https://api-t1.fyers.in/api/v3/generate-authcode?client_id=HWSWLA7UKW-100&redirect_uri=https%3A%2F%2Frizwan700.github.io%2FThe-Alpha-Pulse%2Findex.html&response_type=code&state=alphapulse" target="_blank" rel="noopener noreferrer" onclick="return launchFyersOAuth(event)" style="display:flex; align-items:center; justify-content:center; width:100%; box-sizing:border-box; font-size:13px; padding:13px 18px; background:linear-gradient(135deg, rgba(0,230,118,0.25) 0%, rgba(0,229,255,0.22) 100%); border:1.5px solid var(--green); color:#00e676; font-weight:800; border-radius:8px; box-shadow:0 0 16px rgba(0,230,118,0.25); text-decoration:none; cursor:pointer;">
             🚀 1-Click Connect to FYERS (Login Handshake)
-          </button>
+          </a>
           <div style="text-align:center; font-size:10.5px; color:var(--text-muted); margin-top:5px;">
-            Opens FYERS authorization dialog and securely exchanges auth code for today's token
+            Directly opens FYERS authorization dialog in your browser
           </div>
         </div>
 
@@ -6445,7 +6445,16 @@ async function triggerLiveRefresh(manualClick) {
 
   if (isWknd) {
     // ON WEEKENDS: All traditional markets are CLOSED. Hold official Friday settlement values strictly!
-    if (statusPill) statusPill.textContent = '🔒 WEEKEND SETTLEMENT MODE: CLOSED MARKETS LOCKED';
+    const isFyersActive = localStorage.getItem('AP_FYERS_STATUS') === 'CONNECTED' || (localStorage.getItem('AP_FYERS_TOKEN') && localStorage.getItem('AP_FYERS_TOKEN').length > 20);
+    if (statusPill) {
+      if (isFyersActive) {
+        statusPill.textContent = '🟢 FYERS CONNECTED • WEEKEND SETTLEMENT LOCKED';
+        statusPill.style.color = '#00e676';
+        statusPill.style.borderColor = '#00e676';
+      } else {
+        statusPill.textContent = '🔒 WEEKEND SETTLEMENT MODE: CLOSED MARKETS LOCKED';
+      }
+    }
     isSyncingLive = false;
     countdownSec = 30;
     renderBenchmarkCards();
@@ -6725,7 +6734,16 @@ function copyRedirectUrl() {
   }
 }
 
-function launchFyersOAuth() {
+function updateFyersOAuthLink() {
+  const cEl = document.getElementById('shoonyaClientIdInp');
+  const cid = (cEl ? cEl.value : '').trim() || 'HWSWLA7UKW-100';
+  const redirectUrl = getLiveRedirectUrl();
+  const fyersAuthUrl = `https://api-t1.fyers.in/api/v3/generate-authcode?client_id=${encodeURIComponent(cid)}&redirect_uri=${encodeURIComponent(redirectUrl)}&response_type=code&state=alphapulse`;
+  const a = document.getElementById('fyersAuthAnchor');
+  if (a) a.href = fyersAuthUrl;
+}
+
+function launchFyersOAuth(e) {
   const cEl = document.getElementById('shoonyaClientIdInp');
   const kEl = document.getElementById('shoonyaApiKeyInp');
   const cid = (cEl ? cEl.value : '').trim() || localStorage.getItem('AP_FYERS_ID') || '';
@@ -6734,22 +6752,30 @@ function launchFyersOAuth() {
   if (!cid) {
     showToast('⚠️ Please enter your FYERS App ID (Client ID)');
     if (cEl) cEl.focus();
-    return;
+    if (e && e.preventDefault) e.preventDefault();
+    return false;
   }
   
   localStorage.setItem('AP_BROKER_TYPE', 'fyers');
   localStorage.setItem('AP_FYERS_ID', cid);
-  localStorage.setItem('AP_FYERS_SECRET', sec);
+  if (sec) localStorage.setItem('AP_FYERS_SECRET', sec);
   
   const redirectUrl = getLiveRedirectUrl();
   const fyersAuthUrl = `https://api-t1.fyers.in/api/v3/generate-authcode?client_id=${encodeURIComponent(cid)}&redirect_uri=${encodeURIComponent(redirectUrl)}&response_type=code&state=alphapulse`;
   
-  console.log('[AlphaPulse] Launching FYERS OAuth Handshake:', fyersAuthUrl);
-  showToast('🔗 Redirecting to FYERS Login Handshake...');
+  console.log('[AlphaPulse] Direct FYERS OAuth URL:', fyersAuthUrl);
+  showToast('🔗 Opening FYERS Login...');
   
-  setTimeout(() => {
+  const anchor = document.getElementById('fyersAuthAnchor');
+  if (anchor) anchor.href = fyersAuthUrl;
+  
+  // Immediate direct navigation without setTimeout (avoids popup/navigation blockers on mobile)
+  try {
+    window.location.assign(fyersAuthUrl);
+  } catch (err) {
     window.location.href = fyersAuthUrl;
-  }, 400);
+  }
+  return true;
 }
 
 function saveBrokerCredentials() {

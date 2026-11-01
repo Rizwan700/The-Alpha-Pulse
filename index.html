@@ -3761,12 +3761,12 @@ function renderTickers() {
   const buildTrack = (arr) => {
     const doubled = [...arr, ...arr];
     return doubled.map(item => `
-      <span class="t-item" style="padding:0 12px; border-right:1px solid rgba(255,255,255,0.08); display:inline-flex; align-items:center; gap:7px;">
-        <span class="t-sym" style="font-size:11.5px; font-weight:800; color:${item.color || '#ffffff'};"><span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:${item.up ? '#00e676' : '#ff1744'}; margin-right:4px;"></span>${item.sym}</span>
-        <span class="t-val" style="font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:600; color:var(--text-main);">${item.val}</span>
-        <span class="t-chg ${item.up ? 'up' : 'dn'}" style="font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:700; padding:2px 6px; border-radius:3px; background:${item.up ? 'rgba(0,230,118,0.15)' : 'rgba(255,23,68,0.15)'}; color:${item.up ? 'var(--green)' : 'var(--red)'};">${item.up ? '▲' : '▼'} ${item.chg}</span>
+      <span class="t-item" style="padding:0 14px; border-right:1px solid rgba(255,255,255,0.08); display:inline-flex; align-items:center; gap:8px;">
+        <span class="t-sym" style="font-size:13.5px; font-weight:800; letter-spacing:0.4px; color:${item.color || '#ffffff'};"><span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:${item.up ? '#00e676' : '#ff1744'}; margin-right:5px;"></span>${item.sym}</span>
+        <span class="t-val" style="font-family:'JetBrains Mono',monospace; font-size:13.5px; font-weight:700; color:var(--text-main);">${item.val}</span>
+        <span class="t-chg ${item.up ? 'up' : 'dn'}" style="font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; padding:2px 7px; border-radius:4px; background:${item.up ? 'rgba(0,230,118,0.18)' : 'rgba(255,23,68,0.18)'}; color:${item.up ? 'var(--green)' : 'var(--red)'};">${item.up ? '▲' : '▼'} ${item.chg}</span>
       </span>
-    `).join('');
+    `)
   };
 
   const coreIndices = [
@@ -5788,7 +5788,6 @@ function updateHudTelemetryWidgets(activeNodeIdx) {
   if (a2) { a2.setAttribute('stroke-dasharray', `${l2.toFixed(1)} ${circ}`); a2.setAttribute('stroke-dashoffset', (-l1).toFixed(1)); }
   if (a3) { a3.setAttribute('stroke-dasharray', `${l3.toFixed(1)} ${circ}`); a3.setAttribute('stroke-dashoffset', (-(l1 + l2)).toFixed(1)); }
   if (a4) { a4.setAttribute('stroke-dasharray', `${l4.toFixed(1)} ${circ}`); a4.setAttribute('stroke-dashoffset', (-(l1 + l2 + l3)).toFixed(1)); }
-  updateLiveNodeActivity();
   const nodeTxt = document.getElementById('nodeOnlineTxt');
   if (nodeTxt) nodeTxt.textContent = isWknd ? '🔒 4/4 Nodes Settled' : '🟢 4/4 Live Stream';
 
@@ -5979,15 +5978,6 @@ function recalculateInstrumentDerivedMetrics(inst, livePrice, prevClose, dayHigh
   const prefix = inst.isUsd ? '$' : '';
   inst.priceDisp = inst.id === 'GLOBALRISK' ? `${livePrice.toFixed(2)} VIX` : `${prefix}${fmt(livePrice)}`;
   inst.lowHigh = `${prefix}${fmt(inst.dayLow)} – ${prefix}${fmt(inst.dayHigh)}`;
-
-  // LIVE AUTO-SYNC FOR CENTRAL PIVOT RANGE (CPR) ON TICK
-  if (typeof pivotAutoSyncEnabled !== 'undefined' && pivotAutoSyncEnabled) {
-    if (typeof currentPivotAssetId !== 'undefined' && currentPivotAssetId === inst.id) {
-      if (typeof syncPivotInputsFromLiveAsset === 'function') {
-        syncPivotInputsFromLiveAsset();
-      }
-    }
-  }
 
   const rng = Math.max(0.01, inst.dayHigh - inst.dayLow);
   const pp = (inst.dayHigh + inst.dayLow + inst.price) / 3;
@@ -6358,116 +6348,6 @@ function initKrakenWebSocket() {
   }
 }
 
-
-// DYNAMIC LIVE WEBSOCKET THROUGHPUT & HEARTBEAT ENGINE
-let lastWsTickTimestamp = Date.now();
-
-// DYNAMIC LIVE NODE ACTIVITY TRACKER
-let cryptoPacketCount = 0;
-function updateLiveNodeActivity() {
-  cryptoPacketCount++;
-  const isWknd = (new Date().getDay() === 6 || new Date().getDay() === 0);
-  
-  const p1El = document.getElementById('nodePct1');
-  const p2El = document.getElementById('nodePct2');
-  const p3El = document.getElementById('nodePct3');
-  const p4El = document.getElementById('nodePct4');
-  updateLiveNodeActivity();
-  const nodeTxt = document.getElementById('nodeOnlineTxt');
-  const a1 = document.getElementById('nodeArc1');
-  const a2 = document.getElementById('nodeArc2');
-  const a3 = document.getElementById('nodeArc3');
-  const a4 = document.getElementById('nodeArc4');
-
-  if (isWknd) {
-    // Weekend Mode: Node-1 (IND/NSE), Node-2 (US), Node-4 (MCX/Gold) are Settled at Friday close.
-    // Node-3 (CRY-WS / Binance 24/7) is 100% LIVE and handling active telemetry!
-    const n3 = Math.min(84, Math.max(72, 78 + Math.round(Math.sin(cryptoPacketCount * 0.35) * 5)));
-    const rem = (100 - n3) / 3;
-    const n1 = rem, n2 = rem, n4 = rem;
-
-    if (p1El) p1El.innerHTML = '<span style="color:#6d86a2; font-weight:600;">🔒 Settled</span>';
-    if (p2El) p2El.innerHTML = '<span style="color:#6d86a2; font-weight:600;">🔒 Settled</span>';
-    if (p3El) p3El.innerHTML = `<span style="color:#00e5ff; font-weight:800;">🟢 ${n3}% LIVE</span>`;
-    if (p4El) p4El.innerHTML = '<span style="color:#6d86a2; font-weight:600;">🔒 Settled</span>';
-
-    const circ = 194.8;
-    const l1 = (n1 / 100) * circ;
-    const l2 = (n2 / 100) * circ;
-    const l3 = (n3 / 100) * circ;
-    const l4 = (n4 / 100) * circ;
-
-    if (a1) a1.setAttribute('stroke-dasharray', `${l1.toFixed(1)} ${circ}`);
-    if (a2) a2.setAttribute('stroke-dasharray', `${l2.toFixed(1)} ${circ}`);
-    if (a3) {
-      a3.setAttribute('stroke-dasharray', `${l3.toFixed(1)} ${circ}`);
-      a3.setAttribute('stroke-width', '8');
-      a3.setAttribute('stroke', '#00e5ff');
-      a3.style.filter = 'drop-shadow(0 0 6px #00e5ff)';
-    }
-    if (a4) a4.setAttribute('stroke-dasharray', `${l4.toFixed(1)} ${circ}`);
-
-    if (nodeTxt) {
-      nodeTxt.innerHTML = '<span style="color:#00e5ff; font-weight:700;">🟢 Node-3 Active (CRY-WS)</span> • <span style="color:#6d86a2;">Nodes 1,2,4 Settled</span>';
-    }
-  } else {
-    // Weekday Mode: All 4 Nodes active
-    const n1 = 30 + Math.sin(cryptoPacketCount * 0.2) * 3;
-    const n2 = 25 + Math.cos(cryptoPacketCount * 0.2) * 2;
-    const n3 = 25 + Math.sin(cryptoPacketCount * 0.3) * 3;
-    const n4 = 20;
-    if (p1El) p1El.textContent = n1.toFixed(0) + '%';
-    if (p2El) p2El.textContent = n2.toFixed(0) + '%';
-    if (p3El) p3El.textContent = n3.toFixed(0) + '%';
-    if (p4El) p4El.textContent = n4.toFixed(0) + '%';
-    if (nodeTxt) nodeTxt.innerHTML = '<span style="color:#00e676; font-weight:700;">🟢 4/4 Nodes Live Sync</span>';
-  }
-}
-
-function updateLiveWebSocketThroughput(basePct) {
-  lastWsTickTimestamp = Date.now();
-  const tpArc = document.getElementById('hudThroughputArc');
-  const tpVal = document.getElementById('hudThroughputVal');
-  const tpLoad = document.getElementById('hudLoadTxt');
-  const pct = Math.min(99.6, Math.max(95.4, Math.round(basePct * 10) / 10));
-  if (tpArc) tpArc.style.strokeDashoffset = (213.6 - (213.6 * pct / 100)).toFixed(1);
-  if (tpVal) tpVal.textContent = pct.toFixed(1) + '%';
-  if (tpLoad) {
-    const isWknd = (new Date().getDay() === 6 || new Date().getDay() === 0);
-    tpLoad.innerHTML = isWknd 
-      ? '<span style="color:#00e676; font-weight:700;">🟢 Live Binance Stream (BTC 24/7 Tick)</span>'
-      : '<span style="color:#00e676; font-weight:700;">🟢 Dual Live Stream Active (NSE + Binance)</span>';
-  }
-}
-
-function updateModalCprLive(inst) {
-  const mH = inst.dayHigh, mL = inst.dayLow, mC = inst.price;
-  const mPP = (mH + mL + mC) / 3;
-  const mBC = (mH + mL) / 2;
-  const mTC = (mPP - mBC) + mPP;
-  const mCprW = Math.abs(mTC - mBC);
-  const mCprBot = Math.min(mTC, mBC);
-  const mCprTop = Math.max(mTC, mBC);
-  const isNarrow = inst.isIndian ? (mCprW < 22) : (mCprW / mPP < 0.0018);
-  const cprEl = document.getElementById('mCprStrip');
-  const fmt = (n) => n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
-  const symPrefix = inst.isUsd ? '$' : '₹';
-  if (cprEl) {
-    cprEl.innerHTML = `
-      <div style="background:rgba(0,229,255,0.08); border:1px solid rgba(0,229,255,0.3); border-radius:6px; padding:6px 12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
-        <div>
-          <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--cyan); font-weight:800;">🎯 CENTRAL PIVOT RANGE (CPR):</span>
-          <strong style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#ffffff; margin-left:8px;">BC: ${symPrefix}${fmt(mCprBot)} | PP: ${symPrefix}${fmt(mPP)} | TC: ${symPrefix}${fmt(mCprTop)}</strong>
-          <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--text-sec); margin-left:8px;">(CPR Width: ${symPrefix}${mCprW.toFixed(1)})</span>
-        </div>
-        <span class="div-badge ${isNarrow ? 'bull' : 'bear'}" style="margin:0; font-size:10px;">
-          ${isNarrow ? '🔥 NARROW CPR (High Trend)' : '⚖️ WIDE CPR (Range-Bound)'}
-        </span>
-      </div>
-    `;
-  }
-}
-
 function initBinanceWebSocket() {
   const streams = [
     { url: 'wss://stream.binance.com:9443/ws/btcusdt@ticker', sym: 'BTC' },
@@ -6495,18 +6375,7 @@ function initBinanceWebSocket() {
               updateCardDomOnly(inst);
               propagateRealMacroEquilibrium();
               renderTickers();
-
-              // 1. LIVE SIGNAL THROUGHPUT PULSE ON BITCOIN WEBSOCKET TICK
-              updateLiveWebSocketThroughput(97.6 + (Math.sin(Date.now() / 1200) * 1.5));
-              updateLiveNodeActivity();
-
-              // 2. LIVE CPR UPDATE FOR BITCOIN (MODAL & TAB 6 AUTO-SYNC)
-              if (typeof currentOpenModalId !== 'undefined' && currentOpenModalId === 'BITCOIN') {
-                updateModalCprLive(inst);
-              }
-              if (typeof activeTabId !== 'undefined' && activeTabId === 'tab-pivots' && typeof currentPivotAssetId !== 'undefined' && currentPivotAssetId === 'BITCOIN') {
-                syncPivotInputsFromLiveAsset();
-              }
+              // Telemetry steady on settled F&O metrics
             }
           } else if (st.sym === 'PAXG') {
             const inst = INSTRUMENTS.find(x => x.id === 'GOLD');

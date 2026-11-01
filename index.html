@@ -5721,15 +5721,17 @@ const HUD_TELEMETRY_STATE = {
 function updateHudTelemetryWidgets(activeNodeIdx) {
   const isWknd = (new Date().getDay() === 6 || new Date().getDay() === 0);
 
-  // 1. SIGNAL THROUGHPUT (Steady 97% • No Math.sin oscillation)
-  const tpPct = 97;
+  // 1. SIGNAL THROUGHPUT (Live 24/7 Stream Active for Node-3 Crypto)
+  const tpPct = 98;
   const tpArc = document.getElementById('hudThroughputArc');
   const tpVal = document.getElementById('hudThroughputVal');
   const tpLoad = document.getElementById('hudLoadTxt');
   if (tpArc) tpArc.style.strokeDashoffset = (213.6 - (213.6 * tpPct / 100)).toFixed(1);
   if (tpVal) tpVal.textContent = tpPct + '%';
   if (tpLoad) {
-    tpLoad.textContent = isWknd ? '🔒 Session Settled • Ready' : '⚡ 0-Sec Stream Active';
+    tpLoad.innerHTML = isWknd 
+      ? '<span style="color:#00e676; font-weight:700;">🟢 24/7 Live Stream • BTC Active</span>' 
+      : '<span style="color:#00e676; font-weight:700;">⚡ 0-Sec Multi-Stream Active</span>';
   }
 
   // 2. INSIDER OPTIONS (Settled Friday Skew: Call OI 48% : Put OI 52% • Steady)
@@ -5764,16 +5766,16 @@ function updateHudTelemetryWidgets(activeNodeIdx) {
   if (pcrMBar) pcrMBar.style.width = oiMinusPct + '%';
   if (pcrMVal) pcrMVal.textContent = oiMinusPct + '%';
 
-  // 4. NODE ACTIVITY (Settled Distribution: Node1: 32%, Node2: 28%, Node3: 22%, Node4: 18%)
-  const n1 = 32, n2 = 28, n3 = 22, n4 = 18;
+  // 4. NODE ACTIVITY (Node-3 Crypto 24/7 Live • Nodes 1,2,4 Weekend Settled)
+  const n1 = 30, n2 = 25, n3 = 30, n4 = 15;
   const p1El = document.getElementById('nodePct1');
   const p2El = document.getElementById('nodePct2');
   const p3El = document.getElementById('nodePct3');
   const p4El = document.getElementById('nodePct4');
-  if (p1El) p1El.textContent = n1 + '%';
-  if (p2El) p2El.textContent = n2 + '%';
-  if (p3El) p3El.textContent = n3 + '%';
-  if (p4El) p4El.textContent = n4 + '%';
+  if (p1El) p1El.innerHTML = isWknd ? '30% <span style="font-size:9px; color:#88a0b8;">(🔒)</span>' : n1 + '%';
+  if (p2El) p2El.innerHTML = isWknd ? '25% <span style="font-size:9px; color:#88a0b8;">(🔒)</span>' : n2 + '%';
+  if (p3El) p3El.innerHTML = isWknd ? '<span style="color:#00e5ff; font-weight:800;">🟢 LIVE 30%</span>' : n3 + '%';
+  if (p4El) p4El.innerHTML = isWknd ? '15% <span style="font-size:9px; color:#88a0b8;">(🔒)</span>' : n4 + '%';
 
   const circ = 194.8;
   const l1 = (n1 / 100) * circ;
@@ -5786,10 +5788,18 @@ function updateHudTelemetryWidgets(activeNodeIdx) {
   const a4 = document.getElementById('nodeArc4');
   if (a1) a1.setAttribute('stroke-dasharray', `${l1.toFixed(1)} ${circ}`);
   if (a2) { a2.setAttribute('stroke-dasharray', `${l2.toFixed(1)} ${circ}`); a2.setAttribute('stroke-dashoffset', (-l1).toFixed(1)); }
-  if (a3) { a3.setAttribute('stroke-dasharray', `${l3.toFixed(1)} ${circ}`); a3.setAttribute('stroke-dashoffset', (-(l1 + l2)).toFixed(1)); }
+  if (a3) {
+    a3.setAttribute('stroke-dasharray', `${l3.toFixed(1)} ${circ}`);
+    a3.setAttribute('stroke-dashoffset', (-(l1 + l2)).toFixed(1));
+    a3.style.filter = 'drop-shadow(0 0 5px #00e5ff)';
+  }
   if (a4) { a4.setAttribute('stroke-dasharray', `${l4.toFixed(1)} ${circ}`); a4.setAttribute('stroke-dashoffset', (-(l1 + l2 + l3)).toFixed(1)); }
   const nodeTxt = document.getElementById('nodeOnlineTxt');
-  if (nodeTxt) nodeTxt.textContent = isWknd ? '🔒 4/4 Nodes Settled' : '🟢 4/4 Live Stream';
+  if (nodeTxt) {
+    nodeTxt.innerHTML = isWknd 
+      ? '<span style="color:#00e5ff; font-weight:700;">🟢 Node-3 Live (CRY-WS)</span> • <span style="color:#88a0b8;">Nodes 1,2,4 Settled</span>' 
+      : '<span style="color:#00e676; font-weight:700;">🟢 4/4 Nodes Live Sync</span>';
+  }
 
   // 5. RETAIL BUILDUP (Settled Friday: CE Buildup 52% : PE Buildup 48%)
   const retCePct = 52;

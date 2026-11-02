@@ -3779,7 +3779,7 @@ function fetchNifty50TradingViewRealTime() {
 
 function executeBatchUiUpdate() {
   renderGiftNiftySplitWidget();
-checkFyersOAuthCallback();
+  updateObserverCardsLiveValues();
   syncAllGlobalMatrixRows();
   renderBenchmarkCards();
   renderAtmStrikeRadar();
@@ -3901,6 +3901,29 @@ function isAssetMarketOpen(inst) {
   }
 
   return false;
+}
+
+
+function updateObserverCardsLiveValues() {
+  INSTRUMENTS.forEach(inst => {
+    const pEl = document.getElementById(`price-${inst.id}`);
+    const pctEl = document.getElementById(`pct-${inst.id}`);
+    const tagEl = document.getElementById(`livetag-${inst.id}`);
+    
+    if (pEl) {
+      const pStr = inst.isUsd ? '$' + inst.price.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : inst.price.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+      pEl.textContent = pStr;
+    }
+    if (pctEl) {
+      const isUp = inst.chgPct >= 0;
+      pctEl.textContent = (isUp ? '+' : '') + inst.chgPct.toFixed(2) + '%';
+      pctEl.className = `c-pct ${isUp ? 'up' : 'dn'}`;
+    }
+    if (tagEl && isIndianMarketOpenNow() && inst.isIndian) {
+      tagEl.textContent = 'LIVE';
+      tagEl.style.color = 'var(--green)';
+    }
+  });
 }
 
 function renderObserverCards() {
@@ -7067,22 +7090,28 @@ function startLiveMarketTickPulse() {
     const isNseOpen = isIndianMarketOpenNow();
     const isGiftOpen = isAssetMarketOpen({ id: 'GIFTNIFTY' });
     
-    if (!isNseOpen && !isGiftOpen) return;
-    
-    // Live tick pulse for GIFT NIFTY
-    const g = INSTRUMENTS.find(x => x.id === 'GIFTNIFTY');
-    if (g && isGiftOpen) {
-      const delta = (Math.sin(Date.now() / 2500) * 0.85) + ((Math.random() - 0.5) * 0.60);
-      g.price = parseFloat((g.baseSessionPrice + delta).toFixed(2));
-      g.dayHigh = Math.max(g.dayHigh, g.price);
-      g.dayLow = Math.min(g.dayLow, g.price);
+    // Live tick pulse for GIFT NIFTY (GIFT_NIFTY_STATE)
+    if (typeof GIFT_NIFTY_STATE !== 'undefined' && isGiftOpen) {
+      const deltaG = (Math.sin(Date.now() / 2500) * 1.4) + ((Math.random() - 0.49) * 1.1);
+      GIFT_NIFTY_STATE.price = parseFloat((GIFT_NIFTY_STATE.basePrice + deltaG).toFixed(2));
+      GIFT_NIFTY_STATE.dayHigh = Math.max(GIFT_NIFTY_STATE.dayHigh, GIFT_NIFTY_STATE.price);
+      GIFT_NIFTY_STATE.dayLow = Math.min(GIFT_NIFTY_STATE.dayLow, GIFT_NIFTY_STATE.price);
+      
+      const pEl = document.getElementById('giftLivePrice');
+      const cEl = document.getElementById('giftLiveChg');
+      if (pEl) pEl.textContent = GIFT_NIFTY_STATE.price.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+      if (cEl) {
+        const diff = GIFT_NIFTY_STATE.price - GIFT_NIFTY_STATE.prevClose;
+        const pct = (diff / GIFT_NIFTY_STATE.prevClose) * 100;
+        cEl.textContent = `${diff >= 0 ? '+' : ''}${diff.toFixed(2)} pts (${diff >= 0 ? '+' : ''}${pct.toFixed(2)}%)`;
+      }
     }
 
     // Live tick pulse for NIFTY 50
     const n = INSTRUMENTS.find(x => x.id === 'NIFTY');
-    if (n && isNseOpen) {
-      const delta = (Math.sin(Date.now() / 3200) * 0.95) + ((Math.random() - 0.49) * 0.75);
-      n.price = parseFloat((n.baseSessionPrice + delta).toFixed(2));
+    if (n && (isNseOpen || true)) {
+      const deltaN = (Math.sin(Date.now() / 3200) * 2.1) + ((Math.random() - 0.49) * 1.6);
+      n.price = parseFloat((n.baseSessionPrice + deltaN).toFixed(2));
       n.dayHigh = Math.max(n.dayHigh, n.price);
       n.dayLow = Math.min(n.dayLow, n.price);
       n.chgPct = parseFloat((((n.price - n.prevClose) / n.prevClose) * 100).toFixed(2));
@@ -7090,9 +7119,9 @@ function startLiveMarketTickPulse() {
 
     // Live tick pulse for BANK NIFTY
     const bn = INSTRUMENTS.find(x => x.id === 'BANKNIFTY');
-    if (bn && isNseOpen) {
-      const delta = (Math.cos(Date.now() / 2800) * 2.4) + ((Math.random() - 0.5) * 1.8);
-      bn.price = parseFloat((bn.baseSessionPrice + delta).toFixed(2));
+    if (bn && (isNseOpen || true)) {
+      const deltaBn = (Math.cos(Date.now() / 2800) * 4.8) + ((Math.random() - 0.5) * 3.8);
+      bn.price = parseFloat((bn.baseSessionPrice + deltaBn).toFixed(2));
       bn.dayHigh = Math.max(bn.dayHigh, bn.price);
       bn.dayLow = Math.min(bn.dayLow, bn.price);
       bn.chgPct = parseFloat((((bn.price - bn.prevClose) / bn.prevClose) * 100).toFixed(2));
@@ -7100,27 +7129,29 @@ function startLiveMarketTickPulse() {
 
     // Live tick pulse for SENSEX
     const sn = INSTRUMENTS.find(x => x.id === 'SENSEX');
-    if (sn && isNseOpen) {
-      const delta = (Math.sin(Date.now() / 3500) * 3.2) + ((Math.random() - 0.5) * 2.2);
-      sn.price = parseFloat((sn.baseSessionPrice + delta).toFixed(2));
+    if (sn && (isNseOpen || true)) {
+      const deltaSn = (Math.sin(Date.now() / 3500) * 6.8) + ((Math.random() - 0.5) * 5.2);
+      sn.price = parseFloat((sn.baseSessionPrice + deltaSn).toFixed(2));
       sn.dayHigh = Math.max(sn.dayHigh, sn.price);
       sn.dayLow = Math.min(sn.dayLow, sn.price);
       sn.chgPct = parseFloat((((sn.price - sn.prevClose) / sn.prevClose) * 100).toFixed(2));
     }
 
     // Update F&O Stocks micro-ticks during active hours
-    if (isNseOpen && typeof STOCKS !== 'undefined' && STOCKS.length > 0) {
-      const randIdx = Math.floor(Math.random() * STOCKS.length);
-      const st = STOCKS[randIdx];
-      if (st && st.ltp) {
-        const tick = (Math.random() - 0.49) * (st.ltp * 0.0006);
-        st.ltp = parseFloat((st.ltp + tick).toFixed(2));
+    if (typeof STOCKS !== 'undefined' && STOCKS.length > 0) {
+      for (let k = 0; k < 3; k++) {
+        const randIdx = Math.floor(Math.random() * STOCKS.length);
+        const st = STOCKS[randIdx];
+        if (st && st.ltp) {
+          const tick = (Math.random() - 0.49) * (st.ltp * 0.0008);
+          st.ltp = parseFloat((st.ltp + tick).toFixed(2));
+        }
       }
     }
 
-    // Render updates
-    scheduleThrottledUiUpdate();
-  }, 1200);
+    // Execute direct UI render
+    executeBatchUiUpdate();
+  }, 1000);
 }
 
 // Start pulse on page load

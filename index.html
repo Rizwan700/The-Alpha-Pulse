@@ -2978,14 +2978,14 @@ const INSTRUMENTS = [
     yahooSym: '^NSEI',
     isIndian: true,
     isUsd: false,
-    priceDisp: '23,053.10',
-    price: 23053.10,
-    baseSessionPrice: 23053.10,
+    priceDisp: '23,342.40',
+    price: 23342.40,
+    baseSessionPrice: 23342.40,
     prevClose: 22936.75,
     dayHigh: 23116.10,
     dayLow: 22905.70,
     dayOpen: 22964.50,
-    chgPct: 0.51,
+    chgPct: 1.25,
     lowHigh: '22,905.70 – 23,116.10',
     score: +1.8,
     verdict: 'BULLISH',
@@ -3358,8 +3358,8 @@ const INSTRUMENTS = [
     yahooSym: '^DJI',
     isIndian: false,
     isUsd: false,
-    priceDisp: '51,771.14',
-    price: 51771.14,
+    priceDisp: '51,770.31',
+    price: 51770.31,
     prevClose: 52341.81,
     dayHigh: 52180.40,
     dayLow: 51650.20,
@@ -3822,9 +3822,9 @@ function renderTickers() {
     { sym: 'NIFTY 50', val: '23,053.10', chg: '+0.51%', up: true, color: '#ffffff' },
     { sym: 'SENSEX', val: '74,459.53', chg: '+0.42%', up: true, color: '#ffffff' },
     { sym: 'BANK NIFTY', val: '54,686.95', chg: '-0.41%', up: false, color: '#ffffff' },
-    { sym: 'DOW JONES', val: '51,771.14', chg: '-1.09%', up: false, color: '#ff8a80' },
+    { sym: 'DOW JONES', val: '51,770.31', chg: '-1.09%', up: false, color: '#ff8a80' },
     { sym: 'NASDAQ', val: '25,437.00', chg: '-2.86%', up: false, color: '#ff8a80' },
-    { sym: 'S&P 500', val: '7,578.36', chg: '-2.11%', up: false, color: '#ff8a80' },
+    { sym: 'S&P 500', val: '7,580.07', chg: '-2.11%', up: false, color: '#ff8a80' },
     { sym: 'GOLD (XAU)', val: '$3,880.97', chg: '-3.49%', up: false, color: '#ffd700' },
     { sym: 'SILVER (XAG)', val: '$48.92', chg: '-6.23%', up: false, color: '#cfd8dc' },
     { sym: 'CRUDE OIL', val: '$102.99', chg: '+0.14%', up: true, color: '#ff9800' },
@@ -5563,8 +5563,8 @@ function selectFiiSessionRow(idx, rowEl) {
 // ============================================================================
 var GIFT_NIFTY_STATE = {
   nseSpotClose: 23053.10,
-  basePrice: 23195.00,
-  price: 23195.00,
+  basePrice: 23402.00,
+  price: 23402.00,
   prevClose: 23086.00,
   dayOpen: 23017.50,
   dayLow: 22940.00,
@@ -5599,7 +5599,7 @@ function renderGiftNiftySplitWidget() {
       sessEl.innerHTML = '● LIVE IFSC SESSION';
       sessEl.style.color = 'var(--green)';
     } else {
-      sessEl.innerHTML = '🔒 FRIDAY SESSION CLOSED (LOCKED @ 23,195.00)';
+      sessEl.innerHTML = '🔒 FRIDAY SESSION CLOSED (LOCKED @ 23,402.00)';
       sessEl.style.color = '#88a0b8';
     }
   }
@@ -5884,16 +5884,16 @@ const CORS_RELAYS = [
 let activeRelayIdx = 0;
 // Session anchors for deterministic real-market cross-asset coupling (Zero upward drift!)
 const SESSION_ANCHORS = {
-  NIFTY: 23053.10,
-  BANKNIFTY: 54686.95,
+  NIFTY: 23342.40,
+  BANKNIFTY: 23342.40,
   SENSEX: 74459.53,
   GOLD: 3880.97,
   SILVER: 48.92,
   CRUDEOIL: 102.99,
-  DJI: 51771.14,
+  DJI: 51770.31,
   NASDAQ: 25437.00,
   GLOBALRISK: 19.42,
-  SP500: 7578.36,
+  SP500: 7580.07,
   USDINR: 94.9985,
   EURUSD: 1.0850,
   GBPUSD: 1.2980,
@@ -6208,7 +6208,7 @@ function updateGlobalRiskDynamicFactors() {
       val: '+0.4',
       pct: 82,
       pos: false,
-      desc: 'Nasdaq Composite fell -2.86% (-747.90 pts) to 25,437; Dow Jones closed at 51,771.14 (-1.09%)'
+      desc: 'Nasdaq Composite fell -2.86% (-747.90 pts) to 25,437; Dow Jones closed at 51,770.31 (-1.09%)'
     },
     {
       name: '5. Bitcoin 24/7 Liquidity Retention ($77,438)',
@@ -7082,6 +7082,74 @@ setTimeout(() => {
 // LIVE MARKET TICK PULSE ENGINE (DURING ACTIVE NSE/IFSC TRADING HOURS)
 // ============================================================================
 let livePulseInterval = null;
+
+
+// ============================================================================
+// CLOUDFLARE EDGE WORKER REAL-TIME FYERS QUOTES ENGINE (ZERO CORS)
+// ============================================================================
+const CLOUDFLARE_FYERS_WORKER = 'https://morning-butterfly-e52a.rizwan-ahmad-shekh.workers.dev';
+let fyersWorkerPollTimer = null;
+
+async function pollFyersLiveQuotesViaWorker() {
+  const token = localStorage.getItem('AP_FYERS_TOKEN');
+  if (!token || token.length < 20) return;
+
+  try {
+    const symbols = 'NSE:NIFTY50-INDEX,NSE:NIFTYBANK-INDEX,BSE:SENSEX-INDEX';
+    const fetchUrl = CLOUDFLARE_FYERS_WORKER + '/?token=' + encodeURIComponent(token) + '&symbols=' + encodeURIComponent(symbols);
+    
+    const res = await fetch(fetchUrl);
+    if (!res.ok) return;
+    const data = await res.json();
+    
+    if (data && data.s === 'ok' && Array.isArray(data.d)) {
+      data.d.forEach(item => {
+        const sym = item.n || item.v?.symbol;
+        const v = item.v;
+        if (!v) return;
+        
+        const ltp = v.lp || v.cmd?.c || v.c;
+        const chg = v.ch;
+        const chgPct = v.chp;
+        const high = v.high_price || v.h;
+        const low = v.low_price || v.l;
+        
+        let targetId = null;
+        if (sym && sym.includes('NIFTY50')) targetId = 'NIFTY';
+        else if (sym && sym.includes('NIFTYBANK')) targetId = 'BANKNIFTY';
+        else if (sym && sym.includes('SENSEX')) targetId = 'SENSEX';
+        
+        if (targetId && ltp > 0) {
+          const inst = INSTRUMENTS.find(x => x.id === targetId);
+          if (inst) {
+            inst.price = parseFloat(ltp.toFixed(2));
+            inst.baseSessionPrice = inst.price;
+            if (chgPct !== undefined) inst.chgPct = parseFloat(chgPct.toFixed(2));
+            if (high > 0) inst.dayHigh = Math.max(inst.dayHigh, high);
+            if (low > 0) inst.dayLow = Math.min(inst.dayLow, low);
+          }
+        }
+      });
+      
+      // Update UI with real live ticks
+      executeBatchUiUpdate();
+      
+      const p = document.getElementById('liveEngineStatusPill');
+      if (p) {
+        p.textContent = '🟢 FYERS CLOUD LIVE STREAM CONNECTED';
+        p.style.color = '#00e676';
+        p.style.borderColor = '#00e676';
+      }
+    }
+  } catch (err) {
+    console.warn('[FyersWorker] Sync notice:', err);
+  }
+}
+
+// Start continuous 2-second Cloudflare FYERS poller
+if (fyersWorkerPollTimer) clearInterval(fyersWorkerPollTimer);
+fyersWorkerPollTimer = setInterval(pollFyersLiveQuotesViaWorker, 2000);
+setTimeout(pollFyersLiveQuotesViaWorker, 500);
 
 function startLiveMarketTickPulse() {
   if (livePulseInterval) clearInterval(livePulseInterval);

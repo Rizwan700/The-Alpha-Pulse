@@ -2881,7 +2881,7 @@
           </div>
           <div>
             <label id="brokerKeyLabel" style="display:block; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-sec); margin-bottom:5px;">FYERS APP SECRET</label>
-            <input type="password" id="shoonyaApiKeyInp" value="" placeholder="Enter FYERS App Secret" class="calc-inp" style="font-size:12px; padding:8px 10px; width:100%;">
+            <input type="password" id="shoonyaApiKeyInp" value="HLDSHUQ84Y" placeholder="Enter FYERS App Secret" class="calc-inp" style="font-size:12px; padding:8px 10px; width:100%;">
           </div>
         </div>
 
@@ -7374,8 +7374,8 @@ async function sha256Hex(message) {
 
 async function exchangeFyersAuthCode(authCode) {
   let appId = localStorage.getItem('AP_FYERS_ID') || 'HWSWLA7UKW-100';
-  let appSecret = localStorage.getItem('AP_FYERS_SECRET') || 'G54GPM5483';
-  const appIdHash = 'a2a957d9b3428b0063c882baf8c3eb13e23c45972b123375584d6c0992c34fe4';
+  let appSecret = localStorage.getItem('AP_FYERS_SECRET') || 'HLDSHUQ84Y';
+  const appIdHash = 'db8661ee7b9a9a31d4cabf2eeb56d49f7517695a06f04b9af13c861fa319dcab';
   
   showToast('⏳ Validating Auth Code with FYERS servers...');
   
@@ -7532,13 +7532,20 @@ window.livePulseInterval = window.livePulseInterval || null;
 const CLOUDFLARE_FYERS_WORKER = 'https://morning-butterfly-e52a.rizwan-ahmad-shekh.workers.dev';
 let fyersWorkerPollTimer = null;
 
+let fyersPollBatchIndex = 0;
+// FYERS BATCH 1: Indices + Top Extreme Spurt HVMM Momentum Stocks
+const FYERS_BATCH_1 = 'NSE:NIFTY50-INDEX,NSE:NIFTYBANK-INDEX,BSE:SENSEX-INDEX,NSE:BSE-EQ,NSE:MCX-EQ,NSE:HINDCOPPER-EQ,NSE:NATIONALUM-EQ,NSE:CDSL-EQ,NSE:TRENT-EQ,NSE:DIXON-EQ,NSE:ZOMATO-EQ,NSE:BEL-EQ,NSE:KPITTECH-EQ,NSE:MANAPPURAM-EQ,NSE:BSOFT-EQ,NSE:PERSISTENT-EQ,NSE:SAIL-EQ,NSE:BIOCON-EQ,NSE:HAL-EQ,NSE:VEDL-EQ,NSE:AUROPHARMA-EQ,NSE:EXIDEIND-EQ,NSE:LUPIN-EQ,NSE:ASHOKLEY-EQ,NSE:RELIANCE-EQ,NSE:HDFCBANK-EQ,NSE:ICICIBANK-EQ,NSE:SBIN-EQ,NSE:INFY-EQ,NSE:TCS-EQ';
+
+// FYERS BATCH 2: Additional Active F&O HVMM Momentum Stocks
+const FYERS_BATCH_2 = 'NSE:NIFTY50-INDEX,NSE:NIFTYBANK-INDEX,NSE:TATAMOTORS-EQ,NSE:TATASTEEL-EQ,NSE:HINDZINC-EQ,NSE:TATACOMM-EQ,NSE:BHEL-EQ,NSE:COFORGE-EQ,NSE:REC-EQ,NSE:HINDALCO-EQ,NSE:GODREJPROP-EQ,NSE:AMBUJACEM-EQ,NSE:ESCORTS-EQ,NSE:APOLLOHOSP-EQ,NSE:BANKBARODA-EQ,NSE:OBEROIRLTY-EQ,NSE:SUNPHARMA-EQ,NSE:MUTHOOTFIN-EQ,NSE:TVSMOTOR-EQ,NSE:JINDALSTEL-EQ,NSE:POLYCAB-EQ,NSE:HCLTECH-EQ,NSE:BAJFINANCE-EQ,NSE:COALINDIA-EQ,NSE:WIPRO-EQ,NSE:JSWSTEEL-EQ,NSE:BHARTIARTL-EQ,NSE:TITAN-EQ,NSE:ITC-EQ,NSE:LT-EQ,NSE:AXISBANK-EQ,NSE:MARUTI-EQ';
+
 async function pollFyersLiveQuotesViaWorker() {
   const token = localStorage.getItem('AP_FYERS_TOKEN');
   if (!token || token.length < 20) return;
 
   try {
-    // Poll Indian Indices (Tab 1) + Key HVMM F&O Momentum Stocks (Tab 2)
-    const symbols = 'NSE:NIFTY50-INDEX,NSE:NIFTYBANK-INDEX,BSE:SENSEX-INDEX,NSE:RELIANCE-EQ,NSE:HDFCBANK-EQ,NSE:ICICIBANK-EQ,NSE:INFY-EQ,NSE:TCS-EQ,NSE:SBIN-EQ,NSE:TATAMOTORS-EQ,NSE:M&M-EQ,NSE:TATASTEEL-EQ,NSE:ZOMATO-EQ,NSE:HINDCOPPER-EQ,NSE:NATIONALUM-EQ,BSE:BSE-EQ,MCX:MCX-EQ';
+    fyersPollBatchIndex = (fyersPollBatchIndex + 1) % 2;
+    const symbols = (fyersPollBatchIndex === 1) ? FYERS_BATCH_1 : FYERS_BATCH_2;
     const fetchUrl = CLOUDFLARE_FYERS_WORKER + '/?token=' + encodeURIComponent(token) + '&symbols=' + encodeURIComponent(symbols);
     
     const res = await fetch(fetchUrl);
@@ -7556,6 +7563,7 @@ async function pollFyersLiveQuotesViaWorker() {
         const chgPct = v.chp;
         const high = v.high_price || v.h;
         const low = v.low_price || v.l;
+        const vol = v.volume || v.ttq || v.v;
         
         let targetId = null;
         if (sym && sym.includes('NIFTY50')) targetId = 'NIFTY';
@@ -7578,6 +7586,12 @@ async function pollFyersLiveQuotesViaWorker() {
           if (fno) {
             fno.ltp = parseFloat(ltp.toFixed(2));
             if (chgPct !== undefined) fno.chg = parseFloat(chgPct.toFixed(2));
+            if (high > 0) fno.dayHigh = high;
+            if (low > 0) fno.dayLow = low;
+            if (vol && vol > 0) {
+              fno.volM = parseFloat((vol / 1000000).toFixed(2));
+              fno.volMult = Math.max(1.0, parseFloat((fno.volM / Math.max(0.1, fno.advM)).toFixed(2)));
+            }
             if (typeof enrichStockCalculations === 'function') enrichStockCalculations(fno);
           }
         }

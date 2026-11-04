@@ -1,57 +1,63 @@
-// THE ALPHA PULSE Service Worker - v4 (Network-First Instant Updates)
-const CACHE_NAME = 'alphapulse-cache-v4';
-const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/icon-maskable-512.png',
-  './icons/apple-touch-icon.png',
-  './icons/favicon.png'
+// THE ALPHA PULSE - Service Worker (v6.0.0 - Network-First Live Sync)
+const CACHE_NAME = "alphapulse-live-v6";
+const STATIC_ASSETS = [
+  "./manifest.json",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
+  "./icons/icon-maskable-512.png",
+  "./icons/apple-touch-icon.png",
+  "./icons/favicon.png"
 ];
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
-  );
+self.addEventListener("install", (event) => {
   self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+  );
 });
 
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            console.log("[AlphaPulse SW] Wiping obsolete cache:", key);
+            return caches.delete(key);
+          }
+        })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-self.addEventListener('fetch', (event) => {
-  // Pass real-time WebSockets and streaming broker/market data through directly
+// Network-First for HTML and Live Feeds, Cache-Only for static icons
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+
+  // Bypass cache completely for live streams, websockets, and external APIs
   if (
-    event.request.url.startsWith('ws://') || 
-    event.request.url.startsWith('wss://') ||
-    event.request.url.includes('binance.com') ||
-    event.request.url.includes('kraken.com') ||
-    event.request.url.includes('coincap.io') ||
-    event.request.url.includes('fyers.in') ||
-    event.request.url.includes('tradingview.com') ||
-    event.request.method !== 'GET'
+    url.protocol === "ws:" ||
+    url.protocol === "wss:" ||
+    url.hostname.includes("binance") ||
+    url.hostname.includes("kraken") ||
+    url.hostname.includes("coincap") ||
+    url.hostname.includes("coinbase") ||
+    url.hostname.includes("fyers") ||
+    url.hostname.includes("tradingview") ||
+    url.hostname.includes("workers.dev")
   ) {
     return;
   }
 
-  // NETWORK-FIRST FOR HTML DOCUMENTS (Guarantees instant updates on refresh without stale cache)
-  if (event.request.mode === 'navigate' || event.request.destination === 'document' || event.request.url.includes('index.html')) {
+  // Network-First for index.html (Guarantees user always sees fresh live data!)
+  if (url.pathname.endsWith("index.html") || url.pathname === "/" || url.pathname.endsWith("/")) {
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { cache: "no-store" })
         .then((response) => {
           if (response && response.status === 200) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           }
           return response;
         })
@@ -60,10 +66,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first with network fallback for static icons/assets
+  // Cache-first for static icons
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      return cachedResponse || fetch(event.request);
-    })
+    caches.match(event.request).then((cached) => cached || fetch(event.request))
   );
 });

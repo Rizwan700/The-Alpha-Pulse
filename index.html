@@ -7307,89 +7307,112 @@ function sendJarvisUserMessage() {
   }, 400);
 }
 
-function generateJarvisResponse(query) {
-  const q = query.toLowerCase();
+async function generateJarvisResponse(query) {
+  const q = query.trim();
+  if (!q) return;
 
-  // Extract live terminal metrics
+  // 1. Gather Rich Live Context from Terminal State
   const nif = (typeof INSTRUMENTS !== 'undefined' ? INSTRUMENTS.find(x => x.id === 'NIFTY') : null) || { priceDisp: '23,960.60', chgPct: 1.73 };
   const bnf = (typeof INSTRUMENTS !== 'undefined' ? INSTRUMENTS.find(x => x.id === 'BANKNIFTY') : null) || { priceDisp: '55,002.20', chgPct: 2.15 };
   const gld = (typeof INSTRUMENTS !== 'undefined' ? INSTRUMENTS.find(x => x.id === 'GOLD') : null) || { priceDisp: '$4,068.65', chgPct: 0.12 };
   const crd = (typeof INSTRUMENTS !== 'undefined' ? INSTRUMENTS.find(x => x.id === 'CRUDEOIL') : null) || { priceDisp: '$88.19', chgPct: -0.45 };
   const vix = (typeof INSTRUMENTS !== 'undefined' ? INSTRUMENTS.find(x => x.id === 'GLOBALRISK') : null) || { priceDisp: '15.20', chgPct: -2.40 };
   const usdinr = (typeof GLOBAL_FX_STATE !== 'undefined' && GLOBAL_FX_STATE.usdinr) ? GLOBAL_FX_STATE.usdinr.price : 88.65;
+  const pcr = (typeof OI_DATA_STORE !== 'undefined' && OI_DATA_STORE.NIFTY) ? OI_DATA_STORE.NIFTY.pcr : 1.24;
 
-  let responseHtml = '';
-  let speechText = '';
+  const terminalContext = `
+Live Terminal Telemetry:
+- NIFTY 50: ${nif.priceDisp} (${nif.chgPct >= 0 ? '+' : ''}${nif.chgPct}%)
+- BANKNIFTY: ${bnf.priceDisp} (${bnf.chgPct >= 0 ? '+' : ''}${bnf.chgPct}%)
+- Nifty Put-Call Ratio (PCR): ${pcr} (Bullish Put Writing Support at 24,000 PE, Resistance at 24,500 CE)
+- India VIX: ${vix.priceDisp} (Calm & Risk-On)
+- USD/INR: ₹${usdinr}
+- Crude Oil: ${crd.priceDisp} | Gold: ${gld.priceDisp}
+- Market Breadth: 32 ADV / 18 DEC
+- Net Institutional Flow: +₹184.20 Cr
+- Top Momentum Setup: KOTAKBANK Long (ORB 15M, Entry: ₹2,161.90, SL: ₹2,131.05, Target: ₹2,208.15)
+- User: Engineer Rizwan Ahmad (Address him respectfully as 'Sir')
+`;
 
-  if (q.includes('suspicious') || q.includes('dikhaiye') || q.includes('haan, dikhaiye')) {
-    responseHtml = `
-      <div><strong>⚠️ 2 Suspicious Divergences Detected:</strong></div>
-      <div style="background:rgba(255,23,68,0.08); border:1px solid rgba(255,23,68,0.3); border-radius:8px; padding:10px 12px; margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:11.5px; display:flex; flex-direction:column; gap:6px;">
-        <div>🔴 <strong>RELIANCE:</strong> Price falling (-1.29%) but Volume rising (2.4x) → Heavy Institutional Distribution.</div>
-        <div>🔴 <strong>HINDALCO:</strong> Broke ORB low (₹685.20) with Put unwinding → Extreme Long Liquidation.</div>
-      </div>
-      <div style="margin-top:8px; font-size:12px;">Recommendation: In dono stocks mein Long entries avoid karein.</div>
-    `;
-    speechText = "Maine do suspicious divergences detect ki hain. Reliance mein distribution aur Hindalco mein long liquidation chal rahi hai. Inme long trade avoid karein.";
-  } else if (q.includes('summary') || q.includes('report') || q.includes('screening')) {
-    responseHtml = `
-      <div><strong>📊 Live Terminal Executive Summary:</strong></div>
-      <div style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,229,255,0.25); border-radius:8px; padding:10px 12px; margin-top:8px; display:flex; flex-direction:column; gap:5px; font-family:'JetBrains Mono',monospace; font-size:11.5px;">
-        <div style="display:flex; justify-content:space-between;"><span>NIFTY 50 Spot</span><strong style="color:var(--green);">${nif.priceDisp} (${nif.chgPct >= 0 ? '+' : ''}${nif.chgPct}%)</strong></div>
-        <div style="display:flex; justify-content:space-between;"><span>BANKNIFTY Spot</span><strong style="color:var(--green);">${bnf.priceDisp} (${bnf.chgPct >= 0 ? '+' : ''}${bnf.chgPct}%)</strong></div>
-        <div style="display:flex; justify-content:space-between;"><span>India VIX (Risk)</span><strong style="color:var(--cyan);">${vix.priceDisp} (Calm & Risk-On)</strong></div>
-        <div style="display:flex; justify-content:space-between;"><span>USD/INR Exchange</span><strong style="color:#fff;">₹${usdinr}</strong></div>
-        <div style="display:flex; justify-content:space-between;"><span>Nifty Market Breadth</span><strong style="color:var(--green);">ADV 32 / DEC 18</strong></div>
-        <div style="display:flex; justify-content:space-between;"><span>Net Capital Flow</span><strong style="color:var(--green);">+₹184.20 Cr Inflow</strong></div>
-      </div>
-      <div style="margin-top:8px;">Verdict: <strong>Bullish Trend Continuation</strong> with Private Banking leadership.</div>
-    `;
-    speechText = "Live terminal summary: Nifty Fifty aur BankNifty dono strong hain. Market breadth positive hai aur institutional capital inflow one hundred eighty-four crores hai.";
-  } else if (q.includes('nifty') || q.includes('support') || q.includes('resistance')) {
-    responseHtml = `
-      <div><strong>🎯 NIFTY 50 Options Structure:</strong></div>
-      <div style="background:rgba(18,26,46,0.8); border:1px solid rgba(0,229,255,0.25); border-radius:8px; padding:10px 12px; margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:11.5px; display:flex; flex-direction:column; gap:5px;">
-        <div>🟢 <strong>Major Put Wall (Support):</strong> 24,000 PE (1.82 Cr OI)</div>
-        <div>🔴 <strong>Major Call Wall (Resistance):</strong> 24,500 CE (1.48 Cr OI)</div>
-        <div>🟣 <strong>Max Pain Gravitational Strike:</strong> 24,250</div>
-        <div>📈 <strong>PCR (Put-Call Ratio):</strong> 1.24 (Bullish Put Writing)</div>
-      </div>
-      <div style="margin-top:8px;">Tactical Bias: Jab tak 24,000 intact hai, har dip par Buying opportunity rahegi.</div>
-    `;
-    speechText = "Nifty ka major support twenty-four thousand hai jahan highest Put writing hai, aur resistance twenty-four thousand five hundred hai. Put-Call ratio one point two four bullish hai.";
-  } else if (q.includes('setup') || q.includes('trade') || q.includes('stock')) {
-    responseHtml = `
-      <div><strong>⚡ Top High-Conviction Intraday Setup:</strong></div>
-      <div style="background:rgba(0,230,118,0.08); border:1px solid rgba(0,230,118,0.3); border-radius:8px; padding:10px 12px; margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:11.5px; display:flex; flex-direction:column; gap:4px;">
-        <div style="display:flex; justify-content:space-between;"><strong style="color:#fff;">KOTAKBANK</strong><span style="color:var(--green); font-weight:800;">LONG (ORB 15M)</span></div>
-        <div>Plan Buy: <strong>₹2,161.90</strong> | SL: <strong style="color:var(--red);">₹2,131.05</strong></div>
-        <div>Target 1: <strong style="color:var(--green);">₹2,208.15</strong> | Target 2: <strong style="color:var(--cyan);">₹2,254.40</strong></div>
-        <div style="color:var(--text-sec); font-size:10px;">Risk-to-Reward: 1:2.2 R:R • 2.8x Volume Surge</div>
-      </div>
-      <div style="margin-top:8px;">Aap is setup ko Backtest tab me ₹10 Lakh Paper Wallet se one-click trade kar sakte hain!</div>
-    `;
-    speechText = "Aaj ka top high-conviction setup Kotak Bank long hai. Entry twenty-one sixty-one point ninety par hai aur Target one twenty-two hundred eight hai.";
-  } else {
-    responseHtml = `
-      <div>Maine aapki baat ko analyze kiya: <em>"${query}"</em>.</div>
-      <div style="margin-top:6px; color:#e0e6ed;">
-        Live market telemetry ke mutabiq, institutional money flow positive hai (+₹184 Cr) aur Risk Regime <strong>CALM & RISK-ON</strong> hai.
-        Aap mujhse kisi specific stock, options strike, ya Trade Checklist ke baare me pooch sakte hain!
-      </div>
-    `;
-    speechText = "Maine aapka query analyze kar liya hai. Market overall bullish aur stable hai.";
-  }
-
-  JARVIS_CHAT_HISTORY.push({ sender: 'alpha', html: responseHtml });
+  // 2. Show thinking state in chat UI
+  const thinkingId = 'thinking-' + Date.now();
+  JARVIS_CHAT_HISTORY.push({
+    sender: 'alpha',
+    id: thinkingId,
+    html: `<div style="display:flex; align-items:center; gap:8px; color:var(--cyan); font-style:italic;">
+      <span class="rec-dot" style="background:#00e5ff; width:6px; height:6px;"></span>
+      Alpha live market analyze kar rahi hai...
+    </div>`
+  });
   renderJarvisChatUI();
-      updateAlphaGreetingUI();
+  syncModalChatUI();
 
-  // Speak response using Natural Executive Alpha Voice
-  if (speechText) {
-    speakAlphaVoice(speechText);
+  let finalReply = '';
+
+  // 3. Call Cloudflare Worker /chat endpoint powered by Gemini 1.5 Flash
+  try {
+    const workerBase = getCustomCorsProxy() || 'https://morning-butterfly-e52a.rizwan-ahmad-shekh.workers.dev';
+    const chatEndpoint = `${workerBase.replace(/\/+$/, '')}/chat`;
+
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 9500);
+
+    const res = await fetch(chatEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: q,
+        context: terminalContext
+      }),
+      signal: ctrl.signal
+    });
+    clearTimeout(tid);
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.reply) {
+        finalReply = data.reply;
+      }
+    }
+  } catch (err) {
+    console.debug('[Gemini Worker Chat Notice]', err.message);
   }
-}
 
+  // 4. Intelligent Fallback (If offline or worker latency)
+  if (!finalReply) {
+    const lowQ = q.toLowerCase();
+    if (lowQ.includes('nifty') || lowQ.includes('support') || lowQ.includes('level')) {
+      finalReply = `Sir, Nifty 50 abhi ${nif.priceDisp} par trade kar raha hai. 24,000 PE par major institutional put wall hai jo strong support ka kaam kar rahi hai, aur 24,500 CE par call resistance hai. PCR ${pcr} bullish trend confirm kar raha hai.`;
+    } else if (lowQ.includes('summary') || lowQ.includes('market') || lowQ.includes('batao') || lowQ.includes('overview')) {
+      finalReply = `Sir, market ka overall structure bullish hai. Nifty ${nif.chgPct}% up hai, BankNifty strong hai, aur VIX ${vix.priceDisp} par calm hai. Institutional net inflow positive 184 crore hai.`;
+    } else if (lowQ.includes('trade') || lowQ.includes('stock') || lowQ.includes('setup')) {
+      finalReply = `Sir, aaj ka top high-conviction setup Kotak Bank hai. 2,161.90 ke upar 15-minute ORB breakout trigger hua hai, jiska Stop Loss 2,131 aur Target 2,208 hai.`;
+    } else {
+      finalReply = `Sir, maine aapka sawal analyze kiya. Live terminal data ke mutabiq Nifty aur BankNifty dono bullish zone me hain, aur market breadth 32 advances ke sath positive hai. Aap kisi bhi specific stock ya strike ke levels pooch sakte hain.`;
+    }
+  }
+
+  // Remove thinking indicator and render response
+  const tIdx = JARVIS_CHAT_HISTORY.findIndex(x => x.id === thinkingId);
+  if (tIdx !== -1) {
+    JARVIS_CHAT_HISTORY[tIdx] = {
+      sender: 'alpha',
+      html: `<div>${finalReply.replace(/\n/g, '<br>')}</div>`
+    };
+  } else {
+    JARVIS_CHAT_HISTORY.push({
+      sender: 'alpha',
+      html: `<div>${finalReply.replace(/\n/g, '<br>')}</div>`
+    });
+  }
+
+  renderJarvisChatUI();
+  syncModalChatUI();
+
+  // Clean text for speech synthesis
+  const speechText = finalReply.replace(/[*#_`]/g, '').replace(/<[^>]*>/g, '').slice(0, 300);
+  speakAlphaVoice(speechText);
+}
 function clearJarvisChatHistory() {
   JARVIS_CHAT_HISTORY = [];
   renderJarvisChatUI();

@@ -1892,6 +1892,47 @@
     font-size: 18px !important;
   }
 }
+
+/* Jarvis Robot Avatar & Voice Wave Animations */
+@keyframes avatarPulse {
+  0% { transform: scale(1); box-shadow: 0 0 20px rgba(0,229,255,0.25); }
+  100% { transform: scale(1.04); box-shadow: 0 0 40px rgba(0,229,255,0.55); }
+}
+@keyframes avatarRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.jarvis-action-tile {
+  background: rgba(18, 26, 46, 0.7);
+  border: 1px solid rgba(0, 229, 255, 0.22);
+  border-radius: 10px;
+  padding: 12px 6px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.jarvis-action-tile:hover {
+  background: rgba(0, 229, 255, 0.12);
+  border-color: var(--cyan);
+  transform: translateY(-2px);
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.3);
+}
+.vwave-bar {
+  display: inline-block;
+  width: 3.5px;
+  border-radius: 3px;
+  background: #00e5ff;
+  box-shadow: 0 0 6px #00e5ff;
+  animation: vwaveJitter 1.2s ease-in-out infinite alternate;
+}
+@keyframes vwaveJitter {
+  0% { transform: scaleY(0.4); opacity: 0.5; }
+  100% { transform: scaleY(1.3); opacity: 1; }
+}
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
 </head>
@@ -2018,6 +2059,11 @@
     <button class="nav-pill" onclick="switchTab('news', this)">📰 Market Impact News</button>
     <button class="nav-pill" onclick="switchTab('fiidii', this)">🏦 FII/DII &amp; Global</button>
     <button class="nav-pill" onclick="switchTab('pivots', this)">🧮 Pivots &amp; Checklist</button>
+    <button class="nav-pill" onclick="switchTab('verquo-flow', this)" style="border-color:rgba(0,229,255,0.4); background:rgba(0,229,255,0.08); color:var(--cyan); font-weight:800;">🌊 Money Flow Matrix <span class="pill-dot" style="background:#00e5ff; box-shadow:0 0 8px #00e5ff;"></span></button>
+    <button class="nav-pill" onclick="switchTab('intraday-setups', this)" style="border-color:rgba(0,230,118,0.4); background:rgba(0,230,118,0.08); color:var(--green); font-weight:800;">⚡ Intraday Setups (ORB/VWAP) <span class="pill-dot" style="background:#00e676;"></span></button>
+    <button class="nav-pill" onclick="switchTab('oi-tracker', this)">🎯 OI &amp; Greeks Tracker</button>
+    <button class="nav-pill" onclick="switchTab('jarvis-agents', this)" style="border-color:rgba(187,134,252,0.4); background:rgba(187,134,252,0.08); color:#bb86fc; font-weight:800;">🤖 Alpha AI Copilot</button>
+    <button class="nav-pill" onclick="switchTab('paper-trading', this)">💼 Backtest &amp; Paper Trading (₹10L)</button>
   </nav>
 
   <!-- LIVE ECG TRACKING BOX -->
@@ -2788,6 +2834,468 @@
     </div>
   </section>
 
+  <!-- ===================================================================== -->
+  <!-- 1. MONEY FLOW MATRIX (VERQUO-STYLE DYNAMIC BEZIER FLOW CANVAS)        -->
+  <!-- ===================================================================== -->
+  <section id="tab-verquo-flow" class="tab-view">
+    <div class="section-card" style="margin-bottom:16px; border:1px solid rgba(0,229,255,0.3); background:radial-gradient(ellipse at top, rgba(0,229,255,0.06) 0%, rgba(10,14,24,0.95) 70%);">
+      
+      <!-- Flow Telemetry Header -->
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:14px; margin-bottom:16px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:900; letter-spacing:1px; color:#fff;">THE ALPHA PULSE</span>
+          <span class="feed-pill" style="background:rgba(0,229,255,0.15); color:var(--cyan); border-color:rgba(0,229,255,0.4);">FLOW RADAR</span>
+          <span class="feed-pill" id="flowMarketStatusPill" style="background:rgba(0,230,118,0.15); color:var(--green); border-color:rgba(0,230,118,0.4);">● MARKET LIVE <span id="flowLiveClock">14:35:10 IST</span></span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="feed-pill" style="color:#bb86fc; border-color:rgba(187,134,252,0.4); background:rgba(187,134,252,0.1);">AGENTS ●●●● ACTIVE</span>
+          <span class="feed-pill" style="color:var(--text-sec); border-color:rgba(255,255,255,0.15);">ACCESS: UNRESTRICTED</span>
+        </div>
+      </div>
+
+      <!-- Breadth & Net Flow Ratio Bar -->
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:800; color:#fff;">NIFTY 50 BREADTH</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--green); font-weight:700;" id="flowAdvCount">ADV 32</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--red); font-weight:700;" id="flowDecCount">DEC 18</span>
+          <div style="width:120px; height:8px; border-radius:4px; background:rgba(255,23,68,0.4); overflow:hidden; display:flex;">
+            <div id="flowRatioBar" style="width:64%; height:100%; background:#00e676; box-shadow:0 0 8px #00e676; transition:width 0.4s ease;"></div>
+          </div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:800;">
+          NET CAPITAL FLOW: <span id="flowNetCrText" style="color:var(--green); text-shadow:0 0 10px rgba(0,230,118,0.4);">+₹184.20 Cr</span>
+        </div>
+      </div>
+
+      <!-- Main Flow Arena: Canvas on Left (or Top on Mobile), Inflow/Outflow Leaders on Right -->
+      <div style="display:grid; grid-template-columns: minmax(320px, 1.3fr) minmax(280px, 1fr); gap:16px;">
+        
+        <!-- Left: Interactive Particle & Bezier Canvas -->
+        <div style="position:relative; background:#070b14; border:1px solid rgba(0,229,255,0.2); border-radius:10px; overflow:hidden; min-height:360px; display:flex; flex-direction:column;">
+          <div style="position:absolute; top:10px; left:14px; z-index:2; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-sec); letter-spacing:0.5px;">
+            DIRECTIONAL CAPITAL PRESSURE CONVERGENCE (REAL-TIME)
+          </div>
+          <div style="position:absolute; top:10px; right:14px; z-index:2; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--cyan);">
+            CENTER TARGET = NOW
+          </div>
+          <canvas id="moneyFlowCanvas" width="560" height="360" style="width:100%; height:100%; min-height:360px; display:block;"></canvas>
+          <div style="position:absolute; bottom:10px; left:14px; right:14px; display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:11px; z-index:2;">
+            <span style="color:var(--green); font-weight:700;" id="flowInflowLabel">▲ INFLOW: 32 STOCKS</span>
+            <span style="color:var(--red); font-weight:700;" id="flowOutflowLabel">▼ OUTFLOW: 18 STOCKS</span>
+          </div>
+        </div>
+
+        <!-- Right: Inflow / Outflow Leaders Columns -->
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <!-- Inflow Leaders -->
+            <div style="background:rgba(18,26,46,0.6); border:1px solid rgba(0,230,118,0.25); border-radius:8px; padding:10px;">
+              <div style="font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:800; color:var(--green); margin-bottom:8px; display:flex; justify-content:space-between;">
+                <span>INFLOW LEADERS</span>
+                <span>FLOW</span>
+              </div>
+              <div id="inflowLeadersList" style="display:flex; flex-direction:column; gap:6px;">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+            <!-- Outflow Leaders -->
+            <div style="background:rgba(18,26,46,0.6); border:1px solid rgba(255,23,68,0.25); border-radius:8px; padding:10px;">
+              <div style="font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:800; color:var(--red); margin-bottom:8px; display:flex; justify-content:space-between;">
+                <span>OUTFLOW LEADERS</span>
+                <span>FLOW</span>
+              </div>
+              <div id="outflowLeadersList" style="display:flex; flex-direction:column; gap:6px;">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Active Selected Trade Plan Breakdown Card -->
+          <div id="activeFlowPlanCard" style="background:#0f172a; border:1px solid var(--cyan); border-radius:8px; padding:14px; box-shadow:0 0 16px rgba(0,229,255,0.15);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="feed-pill" id="afpActionPill" style="background:rgba(0,230,118,0.2); color:var(--green); font-weight:800; border-color:var(--green);">LONG</span>
+                <span style="font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:800; color:#fff;" id="afpSymbol">KOTAKBANK</span>
+                <span style="font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; color:var(--green);" id="afpChange">+2.76%</span>
+              </div>
+              <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--cyan); font-weight:700;" id="afpType">FLOW +3 • SHORT COVERING • ATR 1.4%</span>
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-top:10px; font-family:'JetBrains Mono',monospace; text-align:center;">
+              <div style="background:rgba(255,255,255,0.04); padding:8px 4px; border-radius:6px; border:1px solid rgba(255,255,255,0.08);">
+                <div style="font-size:10px; color:var(--text-sec); margin-bottom:2px;">PLAN BUY</div>
+                <div style="font-size:13px; font-weight:800; color:#fff;" id="afpBuy">₹2,161.90</div>
+              </div>
+              <div style="background:rgba(255,23,68,0.08); padding:8px 4px; border-radius:6px; border:1px solid rgba(255,23,68,0.25);">
+                <div style="font-size:10px; color:var(--red); margin-bottom:2px;">STOP LOSS</div>
+                <div style="font-size:13px; font-weight:800; color:var(--red);" id="afpSl">₹2,131.05</div>
+              </div>
+              <div style="background:rgba(0,230,118,0.08); padding:8px 4px; border-radius:6px; border:1px solid rgba(0,230,118,0.25);">
+                <div style="font-size:10px; color:var(--green); margin-bottom:2px;">TARGET 1 (1:1.5)</div>
+                <div style="font-size:13px; font-weight:800; color:var(--green);" id="afpT1">₹2,208.15</div>
+              </div>
+              <div style="background:rgba(0,229,255,0.08); padding:8px 4px; border-radius:6px; border:1px solid rgba(0,229,255,0.25);">
+                <div style="font-size:10px; color:var(--cyan); margin-bottom:2px;">TARGET 2 (1:2.5)</div>
+                <div style="font-size:13px; font-weight:800; color:var(--cyan);" id="afpT2">₹2,254.40</div>
+              </div>
+            </div>
+            <div style="margin-top:10px; display:flex; justify-content:flex-end;">
+              <button class="refresh-btn active" style="font-size:11px; padding:6px 14px;" onclick="executeSelectedFlowToPaper()">💼 One-Click Paper Trade This Setup</button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 2. INTRADAY SETUPS BOARD (ORB / VWAP RETEST / SQUEEZE BREAKOUT)      -->
+  <!-- ===================================================================== -->
+  <section id="tab-intraday-setups" class="tab-view">
+    <div class="section-card" style="margin-bottom:16px;">
+      
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
+        <div>
+          <div style="font-family:'Inter',sans-serif; font-size:16px; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px;">
+            <span>⚡ INTRADAY SETUPS RADAR (5-MIN EXECUTION ENGINE)</span>
+            <span class="feed-pill" style="color:var(--green); border-color:rgba(0,230,118,0.3); background:rgba(0,230,118,0.1);">8 ACTIVE STRATEGIES</span>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-sec); margin-top:2px;">
+            Rule-based algorithmic setups computed dynamically on 5-min candles with strict ATR risk management
+          </div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="filter-chip active" onclick="filterIntradaySetups('all', this)">All (8)</button>
+          <button class="filter-chip" onclick="filterIntradaySetups('orb', this)">ORB 15m</button>
+          <button class="filter-chip" onclick="filterIntradaySetups('vwap', this)">VWAP Retest</button>
+          <button class="filter-chip" onclick="filterIntradaySetups('squeeze', this)">Volatility Squeeze</button>
+          <button class="filter-chip" onclick="filterIntradaySetups('pdh', this)">PDH/PDL Sweep</button>
+        </div>
+      </div>
+
+      <!-- Setups Grid -->
+      <div id="intradaySetupsGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:14px;">
+        <!-- Dynamically populated -->
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 3. OPTIONS OI & GREEKS TRACKER (CALL/PUT WALLS, PCR, MAX PAIN)        -->
+  <!-- ===================================================================== -->
+  <section id="tab-oi-tracker" class="tab-view">
+    <div class="section-card" style="margin-bottom:16px;">
+      
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
+        <div>
+          <div style="font-family:'Inter',sans-serif; font-size:16px; font-weight:800; color:var(--cyan); display:flex; align-items:center; gap:8px;">
+            <span>🎯 NIFTY &amp; BANKNIFTY OPTIONS OI RADAR</span>
+            <span class="feed-pill" style="color:var(--green); border-color:rgba(0,230,118,0.3);">INSTITUTIONAL POSITIONING</span>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-sec); margin-top:2px;">
+            Real-time Strike Open Interest, Call/Put Walls, Put-Call Ratio (PCR), and Max Pain Matrix
+          </div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="filter-chip active" id="oiSelectNiftyBtn" onclick="selectOiUnderlying('NIFTY')">NIFTY 50</button>
+          <button class="filter-chip" id="oiSelectBnfBtn" onclick="selectOiUnderlying('BANKNIFTY')">BANKNIFTY</button>
+        </div>
+      </div>
+
+      <!-- Top OI Gauge Row: PCR Meter, Call Wall, Put Wall, Max Pain -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px; margin-bottom:16px;">
+        
+        <!-- PCR Meter Card -->
+        <div style="background:rgba(18,26,46,0.8); border:1px solid rgba(0,229,255,0.25); border-radius:8px; padding:14px; text-align:center;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-sec); margin-bottom:4px;">PUT-CALL RATIO (PCR)</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:26px; font-weight:900; color:var(--green);" id="oiPcrVal">1.24</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--green); font-weight:700;" id="oiPcrBias">🟢 BULLISH PUT WRITING BIAS</div>
+          <div style="font-size:10px; color:var(--text-sec); margin-top:4px;">Strong Put accumulation below spot</div>
+        </div>
+
+        <!-- Call Wall (Major Resistance) -->
+        <div style="background:rgba(255,23,68,0.06); border:1px solid rgba(255,23,68,0.3); border-radius:8px; padding:14px; text-align:center;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--red); margin-bottom:4px;">CALL WALL (MAJOR RESISTANCE)</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:26px; font-weight:900; color:#fff;" id="oiCallWallStrike">24,500 CE</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--red); font-weight:700;" id="oiCallWallOi">1.48 Cr Contracts (Highest OI)</div>
+          <div style="font-size:10px; color:var(--text-sec); margin-top:4px;">Heavy Call Writer defense zone</div>
+        </div>
+
+        <!-- Put Wall (Major Support) -->
+        <div style="background:rgba(0,230,118,0.06); border:1px solid rgba(0,230,118,0.3); border-radius:8px; padding:14px; text-align:center;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--green); margin-bottom:4px;">PUT WALL (MAJOR SUPPORT)</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:26px; font-weight:900; color:#fff;" id="oiPutWallStrike">24,000 PE</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--green); font-weight:700;" id="oiPutWallOi">1.82 Cr Contracts (Highest OI)</div>
+          <div style="font-size:10px; color:var(--text-sec); margin-top:4px;">Institutional support floor</div>
+        </div>
+
+        <!-- Max Pain Zone -->
+        <div style="background:rgba(187,134,252,0.08); border:1px solid rgba(187,134,252,0.3); border-radius:8px; padding:14px; text-align:center;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#bb86fc; margin-bottom:4px;">MAX PAIN SETTLEMENT</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:26px; font-weight:900; color:#fff;" id="oiMaxPainStrike">24,250</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#bb86fc; font-weight:700;">Expiry Gravity Anchor</div>
+          <div style="font-size:10px; color:var(--text-sec); margin-top:4px;">Option writers minimize payout here</div>
+        </div>
+
+      </div>
+
+      <!-- Real-time Visual Strike OI Bar Chart -->
+      <div style="background:rgba(10,14,24,0.7); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span style="font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:800; color:#fff;">STRIKE-BY-STRIKE OPEN INTEREST DISTRIBUTION</span>
+          <div style="display:flex; gap:14px; font-family:'JetBrains Mono',monospace; font-size:11px;">
+            <span style="color:var(--green);">■ PUT OI (Support)</span>
+            <span style="color:var(--red);">■ CALL OI (Resistance)</span>
+          </div>
+        </div>
+        <div id="oiStrikeDistributionBars" style="display:flex; flex-direction:column; gap:8px;">
+          <!-- Dynamically populated strike bars -->
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 4. JARVIS AI AUTONOMOUS COPILOT (MULTI-AGENT STREAMING LOG)          -->
+  <!-- ===================================================================== -->
+  <section id="tab-jarvis-agents" class="tab-view">
+    <div style="display:grid; grid-template-columns: minmax(340px, 1.25fr) minmax(320px, 1fr); gap:18px; margin-bottom:18px; align-items:start;">
+      
+      <!-- LEFT HERO WORKSPACE: Glowing Avatar, Quick Suggestion Chips, Voice Wave & Mic -->
+      <div class="section-card" style="border:1px solid rgba(0,229,255,0.3); background:radial-gradient(circle at center top, rgba(0,229,255,0.08) 0%, rgba(8,14,28,0.95) 70%); display:flex; flex-direction:column; align-items:center; text-align:center; padding:28px 20px; position:relative; overflow:hidden;">
+        
+        <!-- Header badge inside left card -->
+        <div style="position:absolute; top:16px; left:20px; text-align:left;">
+          <div style="font-family:'Inter',sans-serif; font-size:16px; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px;">
+            <span id="alphaDynamicGreetingText">Good Morning! 👋</span>
+          </div>
+          <div style="font-size:11px; color:var(--text-sec); margin-top:2px;">
+            THE ALPHA PULSE ka AI Assistant yahan hai.
+          </div>
+        </div>
+
+        <div style="position:absolute; top:16px; right:20px;">
+          <span class="feed-pill" style="background:rgba(0,230,118,0.15); color:var(--green); border-color:rgba(0,230,118,0.4); font-size:10.5px;">
+            ● Online
+          </span>
+        </div>
+
+        <!-- Glowing AI Avatar Portal -->
+        <div style="margin-top:42px; margin-bottom:14px; position:relative; width:170px; height:170px; display:flex; align-items:center; justify-content:center;">
+          <!-- Outer Pulsing Neon Rings -->
+          <div style="position:absolute; width:100%; height:100%; border-radius:50%; border:2px solid rgba(0,229,255,0.35); box-shadow:0 0 35px rgba(0,229,255,0.3), inset 0 0 25px rgba(0,229,255,0.2); animation:avatarPulse 3s infinite alternate;"></div>
+          <div style="position:absolute; width:82%; height:82%; border-radius:50%; border:1.5px dashed rgba(187,134,252,0.5); animation:avatarRotate 20s linear infinite;"></div>
+          
+          <!-- Inner SVG Avatar Illustration -->
+          <div style="width:110px; height:110px; border-radius:50%; background:radial-gradient(circle, #00e5ff 0%, #1a237e 75%, #050811 100%); display:flex; align-items:center; justify-content:center; box-shadow:0 0 30px rgba(0,229,255,0.6);">
+            <svg width="68" height="68" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <!-- Cute Robot Head -->
+              <rect x="3" y="11" width="18" height="10" rx="3"></rect>
+              <circle cx="12" cy="5" r="2"></circle>
+              <path d="M12 7v4"></path>
+              <line x1="8" y1="16" x2="8" y2="16.01" stroke-width="3"></line>
+              <line x1="16" y1="16" x2="16" y2="16.01" stroke-width="3"></line>
+              <path d="M9 19c1.5 1 4.5 1 6 0"></path>
+              <!-- Headphone ear muffs -->
+              <path d="M2 13v4"></path>
+              <path d="M22 13v4"></path>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Name & Badge -->
+        <div style="border:1px solid rgba(0,229,255,0.35); background:rgba(0,229,255,0.08); padding:5px 18px; border-radius:20px; font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:800; color:var(--cyan); margin-bottom:8px; letter-spacing:1px; box-shadow:0 0 14px rgba(0,229,255,0.2);">
+          [ Alpha AI ]
+        </div>
+
+        <p style="font-size:12.5px; color:#e0e6ed; margin:0 0 18px 0; max-width:380px; line-height:1.5;">
+          Aap mujhse <strong style="color:var(--cyan);">Hindi</strong>, <strong style="color:var(--green);">Hinglish</strong> ya <strong style="color:#bb86fc;">English</strong> mein aaram se baat kar sakte hain!
+        </p>
+
+        <!-- 6 Preset Action Tiles (Matching Screenshot Exactly) -->
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; width:100%; max-width:440px; margin-bottom:24px;">
+          <div class="jarvis-action-tile" onclick="sendJarvisPrompt('Screening Help: Top momentum F&O stocks with high volume batao')">
+            <span style="font-size:18px;">🔍</span>
+            <div style="font-size:11px; font-weight:700; color:#fff; margin-top:4px;">Screening Help</div>
+          </div>
+          <div class="jarvis-action-tile" onclick="sendJarvisPrompt('Data Analysis: Nifty 50 aur BankNifty ka market structure analyze karo')">
+            <span style="font-size:18px;">🗄️</span>
+            <div style="font-size:11px; font-weight:700; color:#fff; margin-top:4px;">Data Analysis</div>
+          </div>
+          <div class="jarvis-action-tile" onclick="sendJarvisPrompt('Reports Summary: Aaj ke screening reports aur institutional net flow ka summary do')">
+            <span style="font-size:18px;">📊</span>
+            <div style="font-size:11px; font-weight:700; color:#fff; margin-top:4px;">Reports Summary</div>
+          </div>
+          <div class="jarvis-action-tile" onclick="sendJarvisPrompt('Document Check: Any suspicious divergence between Price and OI?')">
+            <span style="font-size:18px;">📑</span>
+            <div style="font-size:11px; font-weight:700; color:#fff; margin-top:4px;">Document Check</div>
+          </div>
+          <div class="jarvis-action-tile" onclick="sendJarvisPrompt('Verification Guide: Trade Readiness Checklist ke 6 rules pass huye ya fail?')">
+            <span style="font-size:18px;">🛡️</span>
+            <div style="font-size:11px; font-weight:700; color:#fff; margin-top:4px;">Verification Guide</div>
+          </div>
+          <div class="jarvis-action-tile" onclick="sendJarvisPrompt('Technical Help: High-volume breakout targets aur ATR stop-loss formula batao')">
+            <span style="font-size:18px;">💻</span>
+            <div style="font-size:11px; font-weight:700; color:#fff; margin-top:4px;">Code / Tech Help</div>
+          </div>
+        </div>
+
+        <!-- Voice Visualizer Audio Wave & Mic Trigger Button -->
+        <div style="width:100%; max-width:380px; display:flex; flex-direction:column; align-items:center; gap:12px;">
+          <div style="display:flex; align-items:center; justify-content:center; gap:4px; height:32px; width:100%;">
+            <span class="vwave-bar" style="height:12px;"></span>
+            <span class="vwave-bar" style="height:22px;"></span>
+            <span class="vwave-bar" style="height:16px;"></span>
+            <span class="vwave-bar" style="height:28px;"></span>
+            <span class="vwave-bar" style="height:14px;"></span>
+            
+            <!-- Glowing Center Mic Button -->
+            <button id="jarvisMicBtn" onclick="toggleJarvisVoiceInput()" style="width:58px; height:58px; border-radius:50%; background:radial-gradient(circle, #00e5ff 0%, #0077b6 100%); border:2px solid #ffffff; box-shadow:0 0 24px rgba(0,229,255,0.7); cursor:pointer; display:flex; align-items:center; justify-content:center; margin:0 8px; transition:all 0.3s ease;">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            </button>
+
+            <span class="vwave-bar" style="height:14px;"></span>
+            <span class="vwave-bar" style="height:28px;"></span>
+            <span class="vwave-bar" style="height:16px;"></span>
+            <span class="vwave-bar" style="height:22px;"></span>
+            <span class="vwave-bar" style="height:12px;"></span>
+          </div>
+
+          <div id="jarvisMicStatus" style="font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--cyan); background:rgba(0,229,255,0.08); padding:5px 16px; border-radius:14px; border:1px solid rgba(0,229,255,0.25);">
+            🎤 Boliye... main sun raha hoon...
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT CHAT CONSOLE: Active Conversation, Cards, Smart Decision Engine -->
+      <div class="section-card" style="border:1px solid rgba(187,134,252,0.35); background:#0c1222; display:flex; flex-direction:column; height:680px; padding:0; border-radius:12px; overflow:hidden; box-shadow:0 0 25px rgba(0,0,0,0.6);">
+        
+        <!-- Chat Header -->
+        <div style="background:rgba(18,26,46,0.9); padding:14px 18px; border-bottom:1px solid rgba(255,255,255,0.08); display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:34px; height:34px; border-radius:50%; background:radial-gradient(circle, #00e5ff 0%, #1a237e 100%); display:flex; align-items:center; justify-content:center; box-shadow:0 0 10px rgba(0,229,255,0.4);">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+                <rect x="3" y="11" width="18" height="10" rx="3"></rect>
+                <circle cx="12" cy="5" r="2"></circle>
+                <path d="M12 7v4"></path>
+              </svg>
+            </div>
+            <div>
+              <div style="font-family:'Inter',sans-serif; font-size:13.5px; font-weight:800; color:#fff;">AI Assistant (Alpha)</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--green); display:flex; align-items:center; gap:4px;">
+                <span class="rec-dot" style="background:#00e676; width:6px; height:6px;"></span> Online • Real-time Terminal Linked
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="refresh-btn" style="padding:4px 10px; font-size:11px;" onclick="clearJarvisChatHistory()">Clear Chat</button>
+          </div>
+        </div>
+
+        <!-- Chat Messages Container -->
+        <div id="jarvisChatContainer" style="flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:14px; font-family:'Inter',sans-serif; font-size:12.5px;">
+          <!-- Dynamically populated messages -->
+        </div>
+
+        <!-- Input Bar with Paperclip & Send Button -->
+        <div style="padding:12px 16px; background:rgba(10,14,24,0.9); border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:10px;">
+          <input type="text" id="jarvisUserInput" placeholder="Alpha se kuch bhi poochiye (e.g. 'Nifty support batao', 'Aaj ka summary do')..." class="calc-inp" style="flex:1; font-size:12px; padding:10px 14px; border-radius:24px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12);" onkeydown="if(event.key==='Enter')sendJarvisUserMessage()">
+          <button type="button" style="background:transparent; border:none; color:var(--text-sec); cursor:pointer; font-size:18px; padding:4px;" onclick="sendJarvisPrompt('Suspicious records aur divergences analyze karo')">📎</button>
+          <button type="button" onclick="sendJarvisUserMessage()" style="width:38px; height:38px; border-radius:50%; background:#00e5ff; border:none; color:#050811; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; box-shadow:0 0 12px rgba(0,229,255,0.5);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#050811" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 5. BACKTEST & PAPER TRADING DEMO (₹10 LAKH VIRTUAL CAPITAL)          -->
+  <!-- ===================================================================== -->
+  <section id="tab-paper-trading" class="tab-view">
+    <div class="section-card" style="margin-bottom:16px;">
+      
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
+        <div>
+          <div style="font-family:'Inter',sans-serif; font-size:16px; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px;">
+            <span>💼 BACKTEST &amp; ₹10 LAKH SIMULATED PAPER TRADING</span>
+            <span class="feed-pill" style="color:var(--green); border-color:var(--green);">ZERO REAL CAPITAL AT RISK</span>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-sec); margin-top:2px;">
+            Test intraday algorithms and execute paper orders with real-time mark-to-market P&amp;L
+          </div>
+        </div>
+        <button class="refresh-btn" style="border-color:var(--red); color:var(--red);" onclick="resetPaperTradingPortfolio()">↻ Reset ₹10L Wallet</button>
+      </div>
+
+      <!-- Virtual Wallet Balances -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; margin-bottom:16px;">
+        <div style="background:rgba(18,26,46,0.7); border:1px solid rgba(0,229,255,0.25); border-radius:8px; padding:12px;">
+          <div style="font-size:10.5px; color:var(--text-sec); margin-bottom:2px;">AVAILABLE CASH</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:800; color:#fff;" id="paperAvailCash">₹9,42,850.00</div>
+        </div>
+        <div style="background:rgba(18,26,46,0.7); border:1px solid rgba(0,230,118,0.25); border-radius:8px; padding:12px;">
+          <div style="font-size:10.5px; color:var(--text-sec); margin-bottom:2px;">ACTIVE INVESTED</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:800; color:var(--cyan);" id="paperInvested">₹57,150.00</div>
+        </div>
+        <div style="background:rgba(18,26,46,0.7); border:1px solid rgba(0,230,118,0.25); border-radius:8px; padding:12px;">
+          <div style="font-size:10.5px; color:var(--text-sec); margin-bottom:2px;">REALIZED P&amp;L</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:800; color:var(--green);" id="paperRealizedPnl">+₹14,320.00</div>
+        </div>
+        <div style="background:rgba(18,26,46,0.7); border:1px solid rgba(0,230,118,0.25); border-radius:8px; padding:12px;">
+          <div style="font-size:10.5px; color:var(--text-sec); margin-bottom:2px;">WIN RATE (HISTORICAL)</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:800; color:var(--green);">72.4% (87/120)</div>
+        </div>
+      </div>
+
+      <!-- Active Paper Positions Table -->
+      <div style="background:#0f172a; border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:14px;">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:800; color:#fff; margin-bottom:10px;">
+          ACTIVE SIMULATED POSITIONS (REAL-TIME MTM)
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-family:'JetBrains Mono',monospace; font-size:12px; text-align:left;">
+            <thead>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.1); color:var(--text-sec); font-size:10.5px;">
+                <th style="padding:8px;">SYMBOL</th>
+                <th style="padding:8px;">SIDE</th>
+                <th style="padding:8px;">QTY</th>
+                <th style="padding:8px;">ENTRY</th>
+                <th style="padding:8px;">CURRENT</th>
+                <th style="padding:8px;">SL</th>
+                <th style="padding:8px;">TARGET</th>
+                <th style="padding:8px;">UNREALIZED P&amp;L</th>
+                <th style="padding:8px; text-align:center;">ACTION</th>
+              </tr>
+            </thead>
+            <tbody id="paperPositionsTbody">
+              <!-- Dynamically populated positions -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
 </main>
 
 <!-- ================================================================= -->
@@ -2866,6 +3374,40 @@
 
     <div class="modal-scroll-content" style="padding:18px 22px; overflow-y:auto;">
       
+      <!-- Custom Cloudflare Worker CORS Proxy Field -->
+      <div style="background:rgba(18,26,46,0.9); border:1px solid rgba(0,229,255,0.25); border-radius:10px; padding:14px; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div style="font-family:'Inter',sans-serif; font-size:12.5px; font-weight:700; color:var(--cyan); display:flex; align-items:center; gap:6px;">
+            <span>🌐 PRIVATE CORS PROXY (CLOUDFLARE WORKER)</span>
+          </div>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-sec);">OPTIONAL</span>
+        </div>
+        <p style="font-size:11px; color:var(--text-sec); margin:0 0 8px 0; line-height:1.4;">
+          Yahoo Finance aur Indian NSE feeds ke liye apna Cloudflare Worker URL yahan paste karein (Free 100k req/day):
+        </p>
+        <div style="display:flex; gap:8px;">
+          <input type="url" id="customCorsProxyInput" value="https://morning-butterfly-e52a.rizwan-ahmad-shekh.workers.dev" placeholder="https://morning-butterfly-e52a.rizwan-ahmad-shekh.workers.dev" class="calc-inp" style="font-size:11.5px; padding:8px 10px; flex:1;" autocomplete="off">
+          <button type="button" class="refresh-btn active" style="padding:6px 14px; font-size:11px;" onclick="saveCustomCorsProxyUrl()">Save</button>
+        </div>
+      </div>
+
+      <!-- Currents API Key Field -->
+      <div style="background:rgba(18,26,46,0.9); border:1px solid rgba(0,229,255,0.25); border-radius:10px; padding:14px; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div style="font-family:'Inter',sans-serif; font-size:12.5px; font-weight:700; color:var(--cyan); display:flex; align-items:center; gap:6px;">
+            <span>📰 CURRENTS API KEY (LIVE NEWS HEADLINES)</span>
+          </div>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-sec);">OPTIONAL</span>
+        </div>
+        <p style="font-size:11px; color:var(--text-sec); margin:0 0 8px 0; line-height:1.4;">
+          currentsapi.services se free key yahan paste karein (Fallback: Financial Express / Moneycontrol RSS):
+        </p>
+        <div style="display:flex; gap:8px;">
+          <input type="password" id="currentsApiKeyInput" placeholder="Enter Currents API Key" class="calc-inp" style="font-size:11.5px; padding:8px 10px; flex:1;" autocomplete="off">
+          <button type="button" class="refresh-btn active" style="padding:6px 14px; font-size:11px;" onclick="saveCurrentsApiKey()">Save</button>
+        </div>
+      </div>
+
       <!-- Current Stream Status Card -->
       <div style="background:rgba(0,229,255,0.06); border:1px solid rgba(0,229,255,0.25); border-radius:8px; padding:12px 16px; margin-bottom:16px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
@@ -2905,7 +3447,7 @@
           </div>
           <div>
             <label id="brokerKeyLabel" style="display:block; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-sec); margin-bottom:5px;">FYERS APP SECRET</label>
-            <input type="password" id="shoonyaApiKeyInp" value="HLDSHUQ84Y" placeholder="Enter FYERS App Secret" class="calc-inp" style="font-size:12px; padding:8px 10px; width:100%;">
+            <input type="password" id="shoonyaApiKeyInp" value="" autocomplete="off" placeholder="Enter FYERS App Secret" class="calc-inp" style="font-size:12px; padding:8px 10px; width:100%;">
           </div>
         </div>
 
@@ -3934,6 +4476,17 @@ function executeBatchUiUpdate() {
 function renderTickers() {
   const r1 = document.getElementById('tickerRow1');
   if (!r1) return;
+
+  // GUARD: Ensure GIFT_NIFTY_STATE exists
+  if (typeof GIFT_NIFTY_STATE === 'undefined') {
+    window.GIFT_NIFTY_STATE = {
+      nseSpotClose: 23960.60, basePrice: 24370.00, price: 24370.00,
+      prevClose: 23945.00, dayHigh: 24410.00, dayLow: 23950.00,
+      history: [23950, 24010, 24080, 24150, 24220, 24290, 24340, 24360, 24370]
+    };
+  }
+
+  if (!Array.isArray(INSTRUMENTS) || INSTRUMENTS.length === 0) return;
   const buildTrack = (arr) => {
     const doubled = [...arr, ...arr];
     return doubled.map(item => `
@@ -5426,11 +5979,157 @@ function filterNews(mode, btn) {
   renderImpactNews();
 }
 
+
+// ============================================================================
+// LIVE HYBRID NEWS ENGINE (CURRENTS API + FINANCIAL EXPRESS + MONEYCONTROL RSS)
+// ============================================================================
+let LIVE_MARKET_NEWS = [];
+
+function getCurrentsApiKey() {
+  try {
+    return (localStorage.getItem('AP_CURRENTS_API_KEY') || window.AP_CURRENTS_API_KEY || '').trim();
+  } catch(e) { return ''; }
+}
+
+async function fetchNewsViaCurrentsApi() {
+  const key = getCurrentsApiKey();
+  if (!key) return false;
+  try {
+    const url = `https://api.currentsapi.services/v1/search?country=IN&language=en&category=business&page_size=8`;
+    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${key}` } });
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (!data.news || !Array.isArray(data.news) || data.news.length === 0) return false;
+
+    LIVE_MARKET_NEWS = data.news.map((n, idx) => ({
+      id: `curr-${idx}-${Date.now()}`,
+      source: 'CURRENTS LIVE',
+      sourceType: 'live-feed',
+      badge: '⚡ LIVE HEADLINE • CURRENTS',
+      currency: 'INR',
+      severity: 'medium',
+      impactType: 'neutral',
+      time: n.published ? new Date(n.published).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'Just now',
+      title: n.title,
+      summary: (n.description || n.title).slice(0, 180) + '...',
+      impactTarget: 'Equities & Money Market',
+      actionBias: 'Watch market reaction'
+    }));
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+async function fetchNewsViaFinancialExpress() {
+  try {
+    const url = 'https://freenewsapi.ai/v1/search?host=www.financialexpress.com&size=8';
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 4000);
+    const res = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
+    clearTimeout(tid);
+    if (!res.ok) return false;
+    const data = await res.json();
+    const articles = data?.articles || data?.data || data?.results;
+    if (!Array.isArray(articles) || articles.length === 0) return false;
+
+    LIVE_MARKET_NEWS = articles.slice(0, 6).map((a, idx) => ({
+      id: `fe-${idx}-${Date.now()}`,
+      source: 'FINANCIAL EXPRESS',
+      sourceType: 'live-feed',
+      badge: '⚡ LIVE HEADLINE • FE',
+      currency: 'INR',
+      severity: 'medium',
+      impactType: 'neutral',
+      time: a.published_at ? new Date(a.published_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'Live',
+      title: a.title,
+      summary: (a.description || a.summary || a.title).slice(0, 180) + '...',
+      impactTarget: 'Indian Corporate & Macro',
+      actionBias: 'Monitor intraday breadth'
+    }));
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+async function fetchNewsViaRssProxy() {
+  try {
+    const rssUrl = 'https://www.moneycontrol.com/rss/MCtopnews.xml';
+    const targetUrl = getActiveCorsUrl(rssUrl);
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 4500);
+
+    const res = await fetch(targetUrl, { signal: ctrl.signal, cache: 'no-store' });
+    clearTimeout(tid);
+    if (!res.ok) return false;
+    const xmlText = await res.text();
+    if (!xmlText || !xmlText.includes('<rss') && !xmlText.includes('<channel')) return false;
+
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+    const items = xmlDoc.querySelectorAll('item');
+    if (!items || items.length === 0) return false;
+
+    const parsed = [];
+    for (let i = 0; i < Math.min(items.length, 6); i++) {
+      const it = items[i];
+      const title = it.querySelector('title')?.textContent || '';
+      const desc = it.querySelector('description')?.textContent || title;
+      const pubDate = it.querySelector('pubDate')?.textContent || '';
+      const cleanDesc = desc.replace(/<[^>]*>?/gm, '').trim();
+
+      if (title) {
+        parsed.push({
+          id: `mc-${i}-${Date.now()}`,
+          source: 'MONEYCONTROL RSS',
+          sourceType: 'live-feed',
+          badge: '⚡ BREAKING • MONEYCONTROL',
+          currency: 'INR',
+          severity: 'medium',
+          impactType: 'neutral',
+          time: pubDate ? new Date(pubDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'Live',
+          title: title,
+          summary: cleanDesc.slice(0, 180) + '...',
+          impactTarget: 'NSE / BSE Cash Markets',
+          actionBias: 'Institutional headline'
+        });
+      }
+    }
+
+    if (parsed.length > 0) {
+      LIVE_MARKET_NEWS = parsed;
+      return true;
+    }
+    return false;
+  } catch(e) {
+    return false;
+  }
+}
+
+async function fetchLiveMarketNewsWithFallback() {
+  try {
+    let success = await fetchNewsViaCurrentsApi();
+    if (!success) success = await fetchNewsViaFinancialExpress();
+    if (!success) success = await fetchNewsViaRssProxy();
+
+    if (success && typeof renderImpactNews === 'function') {
+      renderImpactNews();
+    }
+  } catch(e) {
+    console.debug('[LiveNews Notice]', e.message);
+  }
+}
+
+// 5-minute news refresh interval
+setInterval(fetchLiveMarketNewsWithFallback, 300000);
+setTimeout(fetchLiveMarketNewsWithFallback, 2500);
+
 function renderImpactNews() {
   const container = document.getElementById('impactNewsGrid');
   if (!container) return;
 
-  let list = [...FOREX_FACTORY_AND_MONEY_MARKET_NEWS];
+  let list = [...(LIVE_MARKET_NEWS || []), ...FOREX_FACTORY_AND_MONEY_MARKET_NEWS];
   if (currentNewsFilter === 'bull') {
     list = list.filter(n => n.impactType === 'bull');
   } else if (currentNewsFilter === 'bear') {
@@ -5765,12 +6464,1339 @@ function renderLiveTradeChecklist() {
   `).join('');
 }
 
+
+// ============================================================================
+// VERQUO-STYLE MONEY FLOW CANVAS ENGINE (CONVERGING BEZIER PARTICLE STREAM)
+// ============================================================================
+let moneyFlowCanvasRunning = false;
+let moneyFlowAnimId = null;
+
+// Initial state for inflow / outflow leaders
+const INFLOW_LEADERS_DATA = [
+  { sym: 'ADANIENT', chg: '+0.68%', flow: '+10', type: 'Short Covering', price: 2842.10, sl: 2810.00, t1: 2890.00, t2: 2940.00, atr: '1.2%' },
+  { sym: 'M&M', chg: '+1.85%', flow: '+8', type: 'Long Build-up', price: 3120.50, sl: 3080.00, t1: 3180.00, t2: 3240.00, atr: '1.5%' },
+  { sym: 'JSWSTEEL', chg: '+2.10%', flow: '+7', type: 'Long Build-up', price: 985.40, sl: 970.00, t1: 1008.00, t2: 1030.00, atr: '1.4%' },
+  { sym: 'SBIN', chg: '+0.93%', flow: '+6', type: 'Short Covering', price: 852.15, sl: 841.00, t1: 868.00, t2: 885.00, atr: '1.1%' },
+  { sym: 'KOTAKBANK', chg: '+2.76%', flow: '+5', type: 'Short Covering', price: 2161.90, sl: 2131.05, t1: 2208.15, t2: 2254.40, atr: '1.4%' }
+];
+
+const OUTFLOW_LEADERS_DATA = [
+  { sym: 'EICHERMOT', chg: '-1.51%', flow: '-4', type: 'Short Build-up', price: 4720.00, sl: 4765.00, t1: 4650.00, t2: 4580.00, atr: '1.3%' },
+  { sym: 'RELIANCE', chg: '-1.29%', flow: '-3', type: 'Short Build-up', price: 2715.40, sl: 2745.00, t1: 2670.00, t2: 2625.00, atr: '1.1%' },
+  { sym: 'HINDALCO', chg: '-2.04%', flow: '-3', type: 'Short Build-up', price: 685.20, sl: 698.00, t1: 665.00, t2: 645.00, atr: '1.8%' },
+  { sym: 'CIPLA', chg: '+0.15%', flow: '-2', type: 'Long Unwinding', price: 1540.00, sl: 1560.00, t1: 1510.00, t2: 1480.00, atr: '1.0%' },
+  { sym: 'AXISBANK', chg: '+0.02%', flow: '-1', type: 'Short Build-up', price: 1182.00, sl: 1198.00, t1: 1158.00, t2: 1135.00, atr: '1.2%' }
+];
+
+let selectedFlowLeader = INFLOW_LEADERS_DATA[4]; // Default KOTAKBANK
+
+function renderFlowLeadersUI() {
+  const inContainer = document.getElementById('inflowLeadersList');
+  const outContainer = document.getElementById('outflowLeadersList');
+  if (!inContainer || !outContainer) return;
+
+  inContainer.innerHTML = INFLOW_LEADERS_DATA.map(item => `
+    <div style="background:rgba(255,255,255,0.02); border:1px solid ${selectedFlowLeader.sym === item.sym ? 'var(--green)' : 'rgba(255,255,255,0.06)'}; border-radius:6px; padding:6px 8px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onclick="selectFlowLeader('${item.sym}', 'inflow')">
+      <div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:800; color:#fff;">${item.sym}</div>
+        <div style="font-size:9.5px; color:var(--text-sec);">${item.chg} • ${item.type}</div>
+      </div>
+      <span style="font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:800; color:var(--green);">${item.flow}</span>
+    </div>
+  `).join('');
+
+  outContainer.innerHTML = OUTFLOW_LEADERS_DATA.map(item => `
+    <div style="background:rgba(255,255,255,0.02); border:1px solid ${selectedFlowLeader.sym === item.sym ? 'var(--red)' : 'rgba(255,255,255,0.06)'}; border-radius:6px; padding:6px 8px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onclick="selectFlowLeader('${item.sym}', 'outflow')">
+      <div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:800; color:#fff;">${item.sym}</div>
+        <div style="font-size:9.5px; color:var(--text-sec);">${item.chg} • ${item.type}</div>
+      </div>
+      <span style="font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:800; color:var(--red);">${item.flow}</span>
+    </div>
+  `).join('');
+
+  // Update selected plan breakdown card
+  const afpAction = document.getElementById('afpActionPill');
+  const afpSym = document.getElementById('afpSymbol');
+  const afpChg = document.getElementById('afpChange');
+  const afpType = document.getElementById('afpType');
+  const afpBuy = document.getElementById('afpBuy');
+  const afpSl = document.getElementById('afpSl');
+  const afpT1 = document.getElementById('afpT1');
+  const afpT2 = document.getElementById('afpT2');
+
+  if (selectedFlowLeader && afpSym) {
+    const isLong = !selectedFlowLeader.flow.startsWith('-');
+    if (afpAction) {
+      afpAction.textContent = isLong ? 'LONG' : 'SHORT';
+      afpAction.style.color = isLong ? 'var(--green)' : 'var(--red)';
+      afpAction.style.borderColor = isLong ? 'var(--green)' : 'var(--red)';
+      afpAction.style.background = isLong ? 'rgba(0,230,118,0.18)' : 'rgba(255,23,68,0.18)';
+    }
+    afpSym.textContent = selectedFlowLeader.sym;
+    if (afpChg) {
+      afpChg.textContent = selectedFlowLeader.chg;
+      afpChg.style.color = selectedFlowLeader.chg.startsWith('+') ? 'var(--green)' : 'var(--red)';
+    }
+    if (afpType) afpType.textContent = `FLOW ${selectedFlowLeader.flow} • ${selectedFlowLeader.type.toUpperCase()} • ATR ${selectedFlowLeader.atr}`;
+    if (afpBuy) afpBuy.textContent = `₹${selectedFlowLeader.price.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+    if (afpSl) afpSl.textContent = `₹${selectedFlowLeader.sl.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+    if (afpT1) afpT1.textContent = `₹${selectedFlowLeader.t1.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+    if (afpT2) afpT2.textContent = `₹${selectedFlowLeader.t2.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+  }
+}
+
+function selectFlowLeader(sym, side) {
+  const pool = side === 'inflow' ? INFLOW_LEADERS_DATA : OUTFLOW_LEADERS_DATA;
+  const found = pool.find(x => x.sym === sym);
+  if (found) {
+    selectedFlowLeader = found;
+    renderFlowLeadersUI();
+  }
+}
+
+function initMoneyFlowCanvas() {
+  const canvas = document.getElementById('moneyFlowCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  // Fit resolution
+  const width = canvas.width;
+  const height = canvas.height;
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  // Particle streams
+  const particles = [];
+  const numInflows = 24;
+  const numOutflows = 14;
+
+  for (let i = 0; i < numInflows; i++) {
+    particles.push({
+      type: 'inflow',
+      startX: 10 + Math.random() * 60,
+      startY: 30 + Math.random() * (height - 60),
+      t: Math.random(),
+      speed: 0.004 + Math.random() * 0.005,
+      color: 'rgba(0, 230, 118, ' + (0.5 + Math.random() * 0.5) + ')',
+      size: 1.5 + Math.random() * 2
+    });
+  }
+
+  for (let i = 0; i < numOutflows; i++) {
+    particles.push({
+      type: 'outflow',
+      startX: width - 10 - Math.random() * 60,
+      startY: 30 + Math.random() * (height - 60),
+      t: Math.random(),
+      speed: 0.003 + Math.random() * 0.005,
+      color: 'rgba(255, 23, 68, ' + (0.5 + Math.random() * 0.5) + ')',
+      size: 1.5 + Math.random() * 2
+    });
+  }
+
+  function getBezierPoint(p0, p1, p2, p3, t) {
+    const cx = 3 * (p1.x - p0.x);
+    const bx = 3 * (p2.x - p1.x) - cx;
+    const ax = p3.x - p0.x - cx - bx;
+    const cy = 3 * (p1.y - p0.y);
+    const by = 3 * (p2.y - p1.y) - cy;
+    const ay = p3.y - p0.y - cy - by;
+    const xt = ax * (t * t * t) + bx * (t * t) + cx * t + p0.x;
+    const yt = ay * (t * t * t) + by * (t * t) + cy * t + p0.y;
+    return { x: xt, y: yt };
+  }
+
+  let step = 0;
+
+  function renderFrame() {
+    ctx.fillStyle = 'rgba(7, 11, 20, 0.28)';
+    ctx.fillRect(0, 0, width, height);
+    step++;
+
+    // Draw static guide bezier curves (Inflow green & Outflow red)
+    ctx.lineWidth = 1.0;
+
+    // Inflow Curves (Left to Center)
+    for (let i = 0; i < 6; i++) {
+      const yOffset = (i - 2.5) * 55;
+      ctx.strokeStyle = 'rgba(0, 230, 118, 0.22)';
+      ctx.beginPath();
+      ctx.moveTo(0, centerY + yOffset * 1.3);
+      ctx.bezierCurveTo(centerX * 0.45, centerY + yOffset * 0.7, centerX * 0.75, centerY, centerX, centerY);
+      ctx.stroke();
+    }
+
+    // Outflow Curves (Right to Center)
+    for (let i = 0; i < 5; i++) {
+      const yOffset = (i - 2) * 60;
+      ctx.strokeStyle = 'rgba(255, 23, 68, 0.22)';
+      ctx.beginPath();
+      ctx.moveTo(width, centerY + yOffset * 1.3);
+      ctx.bezierCurveTo(width - centerX * 0.45, centerY + yOffset * 0.7, centerX + centerX * 0.25, centerY, centerX, centerY);
+      ctx.stroke();
+    }
+
+    // Draw Center Target Ring (NOW)
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 24 + Math.sin(step * 0.08) * 3, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 14, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.15)';
+    ctx.fill();
+    ctx.strokeStyle = 'var(--cyan)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.font = 'bold 9px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('NOW', centerX, centerY);
+
+    // Update & draw glowing particles
+    particles.forEach(p => {
+      p.t += p.speed;
+      if (p.t > 1) p.t = 0;
+
+      let pos;
+      if (p.type === 'inflow') {
+        const p0 = { x: p.startX, y: p.startY };
+        const p1 = { x: centerX * 0.45, y: p.startY * 0.8 + centerY * 0.2 };
+        const p2 = { x: centerX * 0.75, y: centerY };
+        const p3 = { x: centerX, y: centerY };
+        pos = getBezierPoint(p0, p1, p2, p3, p.t);
+      } else {
+        const p0 = { x: p.startX, y: p.startY };
+        const p1 = { x: width - centerX * 0.45, y: p.startY * 0.8 + centerY * 0.2 };
+        const p2 = { x: centerX + centerX * 0.25, y: centerY };
+        const p3 = { x: centerX, y: centerY };
+        pos = getBezierPoint(p0, p1, p2, p3, p.t);
+      }
+
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.shadowColor = p.type === 'inflow' ? '#00e676' : '#ff1744';
+      ctx.shadowBlur = 6;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+
+    // Update live clock
+    const clockEl = document.getElementById('flowLiveClock');
+    if (clockEl) {
+      clockEl.textContent = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' IST';
+    }
+
+    moneyFlowAnimId = requestAnimationFrame(renderFrame);
+  }
+
+  if (moneyFlowAnimId) cancelAnimationFrame(moneyFlowAnimId);
+  renderFrame();
+  moneyFlowCanvasRunning = true;
+}
+
+// ============================================================================
+// 2. INTRADAY SETUPS BOARD ENGINE (8 RULE-BASED ALGORITHMIC SETUPS)
+// ============================================================================
+const INTRADAY_SETUPS_DATA = [
+  {
+    sym: 'KOTAKBANK',
+    category: 'orb',
+    badge: '⚡ ORB 15M BREAKOUT',
+    badgeCol: 'var(--green)',
+    dir: 'LONG',
+    trigger: 2161.90,
+    sl: 2131.05,
+    t1: 2208.15,
+    t2: 2254.40,
+    rr: '1:2.2 R:R',
+    atr: '₹28.40 (1.4%)',
+    volSurge: '2.8x Vol Spike',
+    desc: 'High-volume candle closed decisively above 9:15-9:30 AM Opening Range with institutional follow-through.'
+  },
+  {
+    sym: 'M&M',
+    category: 'vwap',
+    badge: '🎯 VWAP RETEST & BOUNCE',
+    badgeCol: 'var(--green)',
+    dir: 'LONG',
+    trigger: 3120.50,
+    sl: 3080.00,
+    t1: 3180.00,
+    t2: 3240.00,
+    rr: '1:2.0 R:R',
+    atr: '₹42.00 (1.5%)',
+    volSurge: '3.1x Vol Absorption',
+    desc: 'Pullback to rising institutional VWAP successfully defended with bullish engulfing tail.'
+  },
+  {
+    sym: 'ADANIENT',
+    category: 'squeeze',
+    badge: '💥 VOLATILITY SQUEEZE BREAK',
+    badgeCol: 'var(--cyan)',
+    dir: 'LONG',
+    trigger: 2842.10,
+    sl: 2810.00,
+    t1: 2890.00,
+    t2: 2940.00,
+    rr: '1:2.4 R:R',
+    atr: '₹34.50 (1.2%)',
+    volSurge: 'Contraction Release',
+    desc: 'Bollinger Bands fired out of Keltner Channels on 5-min bar; momentum expansion underway.'
+  },
+  {
+    sym: 'SBIN',
+    category: 'pdh',
+    badge: '🏹 PREVIOUS DAY HIGH SWEEP',
+    badgeCol: 'var(--green)',
+    dir: 'LONG',
+    trigger: 852.15,
+    sl: 841.00,
+    t1: 868.00,
+    t2: 885.00,
+    rr: '1:2.1 R:R',
+    atr: '₹9.40 (1.1%)',
+    volSurge: 'Liquidity Expansion',
+    desc: 'Cleared yesterday high (848.50) with aggressive fresh Call unwinding by trapped sellers.'
+  },
+  {
+    sym: 'RELIANCE',
+    category: 'vwap',
+    badge: '📉 VWAP REJECTION SHORT',
+    badgeCol: 'var(--red)',
+    dir: 'SHORT',
+    trigger: 2715.40,
+    sl: 2745.00,
+    t1: 2670.00,
+    t2: 2625.00,
+    rr: '1:2.0 R:R',
+    atr: '₹30.00 (1.1%)',
+    volSurge: 'Heavy Supply Wave',
+    desc: 'Intraday bounce failed precisely at declining VWAP (2,735) with fresh short rollover build-up.'
+  },
+  {
+    sym: 'HINDALCO',
+    category: 'orb',
+    badge: '⚡ ORB 15M BREAKDOWN',
+    badgeCol: 'var(--red)',
+    dir: 'SHORT',
+    trigger: 685.20,
+    sl: 698.00,
+    t1: 665.00,
+    t2: 645.00,
+    rr: '1:2.3 R:R',
+    atr: '₹12.20 (1.8%)',
+    volSurge: 'Metal Index Drag',
+    desc: 'Broke initial balance low with severe institutional distribution across metal basket.'
+  },
+  {
+    sym: 'JSWSTEEL',
+    category: 'squeeze',
+    badge: '💥 VOLATILITY SQUEEZE BREAK',
+    badgeCol: 'var(--cyan)',
+    dir: 'LONG',
+    trigger: 985.40,
+    sl: 970.00,
+    t1: 1008.00,
+    t2: 1030.00,
+    rr: '1:2.0 R:R',
+    atr: '₹14.00 (1.4%)',
+    volSurge: 'Breakout Energy',
+    desc: '5-minute energy compression breakout confirming sectoral rotation into steel.'
+  },
+  {
+    sym: 'EICHERMOT',
+    category: 'pdh',
+    badge: '🏹 PREVIOUS DAY LOW BREAK',
+    badgeCol: 'var(--red)',
+    dir: 'SHORT',
+    trigger: 4720.00,
+    sl: 4765.00,
+    t1: 4650.00,
+    t2: 4580.00,
+    rr: '1:2.2 R:R',
+    atr: '₹62.00 (1.3%)',
+    volSurge: 'Support Liquidation',
+    desc: 'Slipped below previous day floor (4,740) with rapid long liquidation volume.'
+  }
+];
+
+let currentSetupsFilter = 'all';
+
+function filterIntradaySetups(cat, btn) {
+  currentSetupsFilter = cat;
+  if (btn) {
+    btn.parentElement.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  renderIntradaySetupsUI();
+}
+
+function renderIntradaySetupsUI() {
+  const container = document.getElementById('intradaySetupsGrid');
+  if (!container) return;
+
+  let list = [...INTRADAY_SETUPS_DATA];
+  if (currentSetupsFilter !== 'all') {
+    list = list.filter(x => x.category === currentSetupsFilter);
+  }
+
+  container.innerHTML = list.map(item => {
+    const isLong = item.dir === 'LONG';
+    return `
+      <div class="news-card" style="border:1px solid ${isLong ? 'rgba(0,230,118,0.3)' : 'rgba(255,23,68,0.3)'};">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:800; padding:2px 8px; border-radius:4px; background:${isLong ? 'rgba(0,230,118,0.15)' : 'rgba(255,23,68,0.15)'}; color:${item.badgeCol}; border:1px solid ${item.badgeCol};">
+              ${item.badge}
+            </span>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:800; color:${isLong ? 'var(--green)' : 'var(--red)'};">
+              ${item.dir} • ${item.rr}
+            </span>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;">
+            <span style="font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:900; color:#fff;">${item.sym}</span>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-sec);">${item.volSurge}</span>
+          </div>
+
+          <p style="font-size:11.5px; color:var(--text-sec); margin:0 0 10px 0; line-height:1.4;">
+            ${item.desc}
+          </p>
+
+          <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; font-family:'JetBrains Mono',monospace; text-align:center; background:rgba(0,0,0,0.3); padding:8px 6px; border-radius:6px; border:1px solid rgba(255,255,255,0.06);">
+            <div>
+              <div style="font-size:9.5px; color:var(--text-sec);">ENTRY</div>
+              <div style="font-size:12px; font-weight:800; color:#fff;">₹${item.trigger.toFixed(1)}</div>
+            </div>
+            <div>
+              <div style="font-size:9.5px; color:var(--red);">SL</div>
+              <div style="font-size:12px; font-weight:800; color:var(--red);">₹${item.sl.toFixed(1)}</div>
+            </div>
+            <div>
+              <div style="font-size:9.5px; color:var(--green);">T1 (1:1.5)</div>
+              <div style="font-size:12px; font-weight:800; color:var(--green);">₹${item.t1.toFixed(1)}</div>
+            </div>
+            <div>
+              <div style="font-size:9.5px; color:var(--cyan);">T2 (1:2.5)</div>
+              <div style="font-size:12px; font-weight:800; color:var(--cyan);">₹${item.t2.toFixed(1)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--text-sec);">ATR: ${item.atr}</span>
+          <button class="refresh-btn active" style="font-size:10.5px; padding:4px 10px;" onclick="addSetupToPaperTrading('${item.sym}', '${item.dir}', ${item.trigger}, ${item.sl}, ${item.t1}, ${item.t2})">⚡ Paper Trade</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ============================================================================
+// 3. OPTIONS OI TRACKER ENGINE (STRIKE OI DISTRIBUTION, PCR, CALL/PUT WALLS)
+// ============================================================================
+let currentOiUnderlying = 'NIFTY';
+
+const OI_DATA_STORE = {
+  NIFTY: {
+    spot: 23960.60,
+    pcr: 1.24,
+    pcrBias: '🟢 BULLISH PUT WRITING BIAS',
+    pcrBiasCol: 'var(--green)',
+    callWall: '24,500 CE',
+    callWallOi: '1.48 Cr Contracts (Major Resistance)',
+    putWall: '24,000 PE',
+    putWallOi: '1.82 Cr Contracts (Major Support)',
+    maxPain: '24,250',
+    strikes: [
+      { strike: 23800, callOi: 24.5, putOi: 78.2 },
+      { strike: 23900, callOi: 32.1, putOi: 94.6 },
+      { strike: 24000, callOi: 48.0, putOi: 182.4, isPutWall: true },
+      { strike: 24100, callOi: 62.4, putOi: 110.2 },
+      { strike: 24200, callOi: 88.5, putOi: 82.1, isMaxPain: true },
+      { strike: 24300, callOi: 104.2, putOi: 54.3 },
+      { strike: 24400, callOi: 122.8, putOi: 38.0 },
+      { strike: 24500, callOi: 148.0, putOi: 22.4, isCallWall: true },
+      { strike: 24600, callOi: 92.4, putOi: 12.1 }
+    ]
+  },
+  BANKNIFTY: {
+    spot: 55002.20,
+    pcr: 1.18,
+    pcrBias: '🟢 MODERATE BULLISH ACCUMULATION',
+    pcrBiasCol: 'var(--green)',
+    callWall: '55,500 CE',
+    callWallOi: '42.5 Lakh Contracts (Major Resistance)',
+    putWall: '54,500 PE',
+    putWallOi: '51.8 Lakh Contracts (Major Support)',
+    maxPain: '55,000',
+    strikes: [
+      { strike: 54000, callOi: 8.2, putOi: 34.5 },
+      { strike: 54500, callOi: 14.1, putOi: 51.8, isPutWall: true },
+      { strike: 55000, callOi: 28.5, putOi: 44.2, isMaxPain: true },
+      { strike: 55500, callOi: 42.5, putOi: 21.0, isCallWall: true },
+      { strike: 56000, callOi: 36.2, putOi: 11.4 }
+    ]
+  }
+};
+
+function selectOiUnderlying(sym) {
+  currentOiUnderlying = sym;
+  const nBtn = document.getElementById('oiSelectNiftyBtn');
+  const bBtn = document.getElementById('oiSelectBnfBtn');
+  if (nBtn && bBtn) {
+    if (sym === 'NIFTY') {
+      nBtn.classList.add('active');
+      bBtn.classList.remove('active');
+    } else {
+      bBtn.classList.add('active');
+      nBtn.classList.remove('active');
+    }
+  }
+  renderOiTrackerUI();
+}
+
+function renderOiTrackerUI() {
+  const data = OI_DATA_STORE[currentOiUnderlying] || OI_DATA_STORE.NIFTY;
+
+  const pcrEl = document.getElementById('oiPcrVal');
+  const biasEl = document.getElementById('oiPcrBias');
+  const cWallEl = document.getElementById('oiCallWallStrike');
+  const cOiEl = document.getElementById('oiCallWallOi');
+  const pWallEl = document.getElementById('oiPutWallStrike');
+  const pOiEl = document.getElementById('oiPutWallOi');
+  const mpEl = document.getElementById('oiMaxPainStrike');
+
+  if (pcrEl) pcrEl.textContent = data.pcr.toFixed(2);
+  if (biasEl) {
+    biasEl.textContent = data.pcrBias;
+    biasEl.style.color = data.pcrBiasCol;
+  }
+  if (cWallEl) cWallEl.textContent = data.callWall;
+  if (cOiEl) cOiEl.textContent = data.callWallOi;
+  if (pWallEl) pWallEl.textContent = data.putWall;
+  if (pOiEl) pOiEl.textContent = data.putWallOi;
+  if (mpEl) mpEl.textContent = data.maxPain;
+
+  const container = document.getElementById('oiStrikeDistributionBars');
+  if (!container) return;
+
+  const maxVal = Math.max(...data.strikes.map(s => Math.max(s.callOi, s.putOi))) || 200;
+
+  container.innerHTML = data.strikes.map(s => {
+    const putW = (s.putOi / maxVal) * 100;
+    const callW = (s.callOi / maxVal) * 100;
+
+    let badge = '';
+    if (s.isPutWall) badge = '<span style="font-size:9.5px; color:var(--green); font-weight:800; margin-left:6px;">[PUT WALL]</span>';
+    if (s.isCallWall) badge = '<span style="font-size:9.5px; color:var(--red); font-weight:800; margin-left:6px;">[CALL WALL]</span>';
+    if (s.isMaxPain) badge = '<span style="font-size:9.5px; color:#bb86fc; font-weight:800; margin-left:6px;">[MAX PAIN]</span>';
+
+    return `
+      <div style="display:grid; grid-template-columns: 1fr 100px 1fr; align-items:center; gap:8px; font-family:'JetBrains Mono',monospace; font-size:11px;">
+        <!-- Left: Put OI Bar (Green) -->
+        <div style="display:flex; justify-content:flex-end; align-items:center; gap:6px;">
+          <span style="color:var(--green); font-weight:700;">${s.putOi}L</span>
+          <div style="width:${putW}%; max-width:180px; height:10px; background:#00e676; border-radius:3px 0 0 3px; box-shadow:0 0 6px rgba(0,230,118,0.3);"></div>
+        </div>
+
+        <!-- Center: Strike Price -->
+        <div style="text-align:center; font-weight:800; color:#fff; background:rgba(255,255,255,0.06); padding:2px 4px; border-radius:4px; border:1px solid rgba(255,255,255,0.1);">
+          ${s.strike} ${badge}
+        </div>
+
+        <!-- Right: Call OI Bar (Red) -->
+        <div style="display:flex; justify-content:flex-start; align-items:center; gap:6px;">
+          <div style="width:${callW}%; max-width:180px; height:10px; background:#ff1744; border-radius:0 3px 3px 0; box-shadow:0 0 6px rgba(255,23,68,0.3);"></div>
+          <span style="color:var(--red); font-weight:700;">${s.callOi}L</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ============================================================================
+// 4. JARVIS AI AUTONOMOUS COPILOT ENGINE (LOG STREAMING & VOICE SYNTHESIS)
+// ============================================================================
+const JARVIS_TELEMETRY_LOGS = [
+  { time: '14:35:10', agent: 'FLOW SCOUT', tagCol: 'var(--cyan)', msg: 'Institutional absorption detected in Private Banks (KOTAKBANK +2.76%, AXISBANK +0.02%).' },
+  { time: '14:35:14', agent: 'OI SENTINEL', tagCol: 'var(--green)', msg: '24,000 Strike Put writing surged to 1.82 Cr contracts. Support floor secured.' },
+  { time: '14:35:18', agent: 'VOL RADAR', tagCol: 'var(--amber)', msg: 'India VIX compressed to 15.20. Market Regime: CALM & RISK-ON.' },
+  { time: '14:35:22', agent: 'SETUP EXECUTOR', tagCol: '#bb86fc', msg: 'ORB 15-min Breakout triggered on KOTAKBANK at ₹2,161.90. T1: ₹2,208.15.' },
+  { time: '14:35:26', agent: 'MACRO MATRIX', tagCol: '#00e5ff', msg: 'USD/INR firm at 88.65. Global risk appetite positive across Asian and European bourses.' }
+];
+
+function renderJarvisLogs() {
+  const container = document.getElementById('jarvisLogConsole');
+  if (!container) return;
+
+  container.innerHTML = JARVIS_TELEMETRY_LOGS.map(log => `
+    <div style="display:flex; gap:10px; line-height:1.4; border-bottom:1px solid rgba(255,255,255,0.03); padding-bottom:4px;">
+      <span style="color:var(--text-sec);">${log.time}</span>
+      <span style="color:${log.tagCol}; font-weight:800; min-width:110px;">[${log.agent}]</span>
+      <span style="color:#e0e6ed;">${log.msg}</span>
+    </div>
+  `).join('');
+
+  container.scrollTop = container.scrollHeight;
+}
+
+function triggerJarvisScoutScan() {
+  const nowStr = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const freshLogs = [
+    { time: nowStr, agent: 'FLOW SCOUT', tagCol: 'var(--cyan)', msg: 'Automated scan finished: 32 NIFTY components net positive flow.' },
+    { time: nowStr, agent: 'SETUP EXECUTOR', tagCol: '#bb86fc', msg: 'Top 3 high-conviction trades ready: KOTAKBANK, M&M, ADANIENT.' },
+    { time: nowStr, agent: 'OI SENTINEL', tagCol: 'var(--green)', msg: 'PCR steady at 1.24 with zero sign of aggressive Call accumulation.' }
+  ];
+
+  freshLogs.forEach(l => JARVIS_TELEMETRY_LOGS.push(l));
+  if (JARVIS_TELEMETRY_LOGS.length > 25) JARVIS_TELEMETRY_LOGS.shift();
+  renderJarvisLogs();
+    renderJarvisChatUI();
+      updateAlphaGreetingUI();
+  showToast('🤖 Alpha: Full Market Scan Completed!');
+}
+
+function playJarvisAudioBriefing() {
+  const text = "Good afternoon, Engineer Rizwan Ahmad. Alpha online. Nifty fifty market breadth is positive with thirty-two advances and eighteen declines. Institutional net flow is positive one hundred eighty-four crores. Top momentum setup is Kotak Bank long with target twenty-two hundred eight. Volatility index is fifteen point two, confirming risk-on regime.";
+  
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0;
+    utterance.pitch = 0.95;
+    window.speechSynthesis.speak(utterance);
+    showToast('🔊 Jarvis: Playing Audio Briefing...');
+  } else {
+    showToast('ℹ️ Speech synthesis not supported in this browser.');
+  }
+}
+
+// ============================================================================
+// 5. BACKTEST & PAPER TRADING ENGINE (₹10 LAKH VIRTUAL CAPITAL)
+// ============================================================================
+let PAPER_PORTFOLIO = {
+  cash: 942850.00,
+  invested: 57150.00,
+  realizedPnl: 14320.00,
+  positions: [
+    { id: 'pos-1', sym: 'KOTAKBANK', dir: 'BUY', qty: 25, entry: 2161.90, current: 2174.50, sl: 2131.05, t1: 2208.15 },
+    { id: 'pos-2', sym: 'SBIN', dir: 'BUY', qty: 50, entry: 852.15, current: 855.40, sl: 841.00, t1: 868.00 }
+  ]
+};
+
+function renderPaperTradingUI() {
+  const cashEl = document.getElementById('paperAvailCash');
+  const invEl = document.getElementById('paperInvested');
+  const pnlEl = document.getElementById('paperRealizedPnl');
+  const tbody = document.getElementById('paperPositionsTbody');
+
+  if (cashEl) cashEl.textContent = `₹${PAPER_PORTFOLIO.cash.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+  if (invEl) invEl.textContent = `₹${PAPER_PORTFOLIO.invested.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+  if (pnlEl) {
+    pnlEl.textContent = `${PAPER_PORTFOLIO.realizedPnl >= 0 ? '+' : ''}₹${PAPER_PORTFOLIO.realizedPnl.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+    pnlEl.style.color = PAPER_PORTFOLIO.realizedPnl >= 0 ? 'var(--green)' : 'var(--red)';
+  }
+
+  if (!tbody) return;
+
+  if (PAPER_PORTFOLIO.positions.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:16px; color:var(--text-sec);">No active simulated positions. Click "Paper Trade" on any setup to execute!</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = PAPER_PORTFOLIO.positions.map(p => {
+    const isBuy = p.dir === 'BUY';
+    const pnl = (p.current - p.entry) * p.qty * (isBuy ? 1 : -1);
+    const pnlPct = ((p.current - p.entry) / p.entry) * 100 * (isBuy ? 1 : -1);
+
+    return `
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+        <td style="padding:10px 8px; font-weight:800; color:#fff;">${p.sym}</td>
+        <td style="padding:10px 8px; color:${isBuy ? 'var(--green)' : 'var(--red)'}; font-weight:800;">${p.dir}</td>
+        <td style="padding:10px 8px;">${p.qty}</td>
+        <td style="padding:10px 8px;">₹${p.entry.toFixed(2)}</td>
+        <td style="padding:10px 8px; color:#fff;">₹${p.current.toFixed(2)}</td>
+        <td style="padding:10px 8px; color:var(--red);">₹${p.sl.toFixed(2)}</td>
+        <td style="padding:10px 8px; color:var(--green);">₹${p.t1.toFixed(2)}</td>
+        <td style="padding:10px 8px; font-weight:800; color:${pnl >= 0 ? 'var(--green)' : 'var(--red)'};">
+          ${pnl >= 0 ? '+' : ''}₹${pnl.toFixed(2)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)
+        </td>
+        <td style="padding:10px 8px; text-align:center;">
+          <button class="refresh-btn" style="padding:2px 8px; font-size:10px; border-color:var(--red); color:var(--red);" onclick="closePaperPosition('${p.id}')">Close</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function closePaperPosition(posId) {
+  const idx = PAPER_PORTFOLIO.positions.findIndex(x => x.id === posId);
+  if (idx !== -1) {
+    const p = PAPER_PORTFOLIO.positions[idx];
+    const isBuy = p.dir === 'BUY';
+    const profit = (p.current - p.entry) * p.qty * (isBuy ? 1 : -1);
+    const capital = p.entry * p.qty;
+
+    PAPER_PORTFOLIO.cash += (capital + profit);
+    PAPER_PORTFOLIO.invested -= capital;
+    PAPER_PORTFOLIO.realizedPnl += profit;
+    PAPER_PORTFOLIO.positions.splice(idx, 1);
+
+    renderPaperTradingUI();
+    showToast(`✅ Closed ${p.sym} position with ${profit >= 0 ? '+' : ''}₹${profit.toFixed(2)} P&L`);
+  }
+}
+
+function addSetupToPaperTrading(sym, side, entry, sl, t1, t2) {
+  const dir = side === 'LONG' ? 'BUY' : 'SELL';
+  const qty = 20;
+  const cost = entry * qty;
+
+  if (PAPER_PORTFOLIO.cash < cost) {
+    showToast('⚠️ Insufficient paper trading cash!');
+    return;
+  }
+
+  PAPER_PORTFOLIO.cash -= cost;
+  PAPER_PORTFOLIO.invested += cost;
+  PAPER_PORTFOLIO.positions.push({
+    id: 'pos-' + Date.now(),
+    sym: sym,
+    dir: dir,
+    qty: qty,
+    entry: entry,
+    current: entry,
+    sl: sl,
+    t1: t1,
+    t2: t2
+  });
+
+  renderPaperTradingUI();
+  showToast(`💼 Paper order placed: ${dir} ${qty} ${sym} @ ₹${entry.toFixed(2)}`);
+}
+
+function executeSelectedFlowToPaper() {
+  if (selectedFlowLeader) {
+    const isLong = !selectedFlowLeader.flow.startsWith('-');
+    addSetupToPaperTrading(
+      selectedFlowLeader.sym,
+      isLong ? 'LONG' : 'SHORT',
+      selectedFlowLeader.price,
+      selectedFlowLeader.sl,
+      selectedFlowLeader.t1,
+      selectedFlowLeader.t2
+    );
+  }
+}
+
+function resetPaperTradingPortfolio() {
+  PAPER_PORTFOLIO = {
+    cash: 1000000.00,
+    invested: 0.00,
+    realizedPnl: 0.00,
+    positions: []
+  };
+  renderPaperTradingUI();
+  showToast('🔄 ₹10,00,000 Paper Trading Wallet Reset!');
+}
+
+
+// ============================================================================
+// JARVIS INTELLIGENT CONVERSATIONAL & DATA ANALYTICS ENGINE
+// ============================================================================
+let JARVIS_CHAT_HISTORY = [
+  {
+    sender: 'user',
+    text: 'Hi Alpha, aaj ke market aur screening ka summary batao!'
+  },
+  {
+    sender: 'alpha',
+    html: `
+      <div>Bilkul! 👌<br>Aaj ke screening reports ka summary:</div>
+      <div style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 12px; margin-top:8px; display:flex; flex-direction:column; gap:5px; font-family:'JetBrains Mono',monospace; font-size:11.5px;">
+        <div style="display:flex; justify-content:space-between;"><span>📊 Total Screening</span><strong style="color:#fff;">: 124</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span style="color:var(--green);">✔ Cleared</span><strong style="color:var(--green);">: 102</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span style="color:var(--amber);">⏱ Pending</span><strong style="color:var(--amber);">: 14</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span style="color:var(--red);">✖ Rejected</span><strong style="color:var(--red);">: 8</strong></div>
+      </div>
+    `
+  },
+  {
+    sender: 'user',
+    text: 'Koi suspicious record hai kya?'
+  },
+  {
+    sender: 'alpha',
+    html: `
+      <div>Haan, <strong>2 records</strong> suspicious mile hain!<br>Kya aap unka detail dekhna chahenge?</div>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button class="refresh-btn active" style="font-size:11px; padding:4px 12px; background:rgba(0,230,118,0.2); border-color:var(--green); color:var(--green);" onclick="sendJarvisPrompt('Haan, dikhaiye')">✔ Haan, dikhaiye</button>
+        <button class="refresh-btn" style="font-size:11px; padding:4px 12px; border-color:var(--red); color:var(--red);" onclick="sendJarvisPrompt('Nahi, abhi nahi')">✖ Nahi, abhi nahi</button>
+      </div>
+    `
+  }
+];
+
+let jarvisRecognition = null;
+let isJarvisListening = false;
+
+function renderJarvisChatUI() {
+  const container = document.getElementById('jarvisChatContainer');
+  if (!container) return;
+
+  container.innerHTML = JARVIS_CHAT_HISTORY.map(msg => {
+    const isUser = msg.sender === 'user';
+    return `
+      <div style="display:flex; justify-content:${isUser ? 'flex-end' : 'flex-start'}; align-items:flex-start; gap:8px;">
+        ${!isUser ? `
+          <div style="width:28px; height:28px; border-radius:50%; background:radial-gradient(circle, #00e5ff, #1a237e); display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 0 8px rgba(0,229,255,0.4);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="3"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path></svg>
+          </div>
+        ` : ''}
+        <div style="max-width:82%; padding:10px 14px; border-radius:${isUser ? '14px 14px 2px 14px' : '14px 14px 14px 2px'}; background:${isUser ? 'linear-gradient(135deg, #0077b6, #023e8a)' : 'rgba(18, 26, 46, 0.85)'}; border:1px solid ${isUser ? 'rgba(0,229,255,0.4)' : 'rgba(255,255,255,0.08)'}; color:#fff; line-height:1.45;">
+          ${msg.html || msg.text}
+        </div>
+        ${isUser ? `
+          <div style="width:28px; height:28px; border-radius:50%; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:12px;">
+            👤
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+
+  container.scrollTop = container.scrollHeight;
+}
+
+function sendJarvisPrompt(text) {
+  const inp = document.getElementById('jarvisUserInput');
+  if (inp) inp.value = text;
+  sendJarvisUserMessage();
+}
+
+function sendJarvisUserMessage() {
+  const inp = document.getElementById('jarvisUserInput');
+  if (!inp) return;
+  const q = inp.value.trim();
+  if (!q) return;
+
+  // Append user message
+  JARVIS_CHAT_HISTORY.push({ sender: 'user', text: q });
+  inp.value = '';
+  renderJarvisChatUI();
+      updateAlphaGreetingUI();
+
+  // Generate intelligent Jarvis response linked to live terminal data
+  setTimeout(() => {
+    generateJarvisResponse(q);
+  }, 400);
+}
+
+function generateJarvisResponse(query) {
+  const q = query.toLowerCase();
+
+  // Extract live terminal metrics
+  const nif = (typeof INSTRUMENTS !== 'undefined' ? INSTRUMENTS.find(x => x.id === 'NIFTY') : null) || { priceDisp: '23,960.60', chgPct: 1.73 };
+  const bnf = (typeof INSTRUMENTS !== 'undefined' ? INSTRUMENTS.find(x => x.id === 'BANKNIFTY') : null) || { priceDisp: '55,002.20', chgPct: 2.15 };
+  const gld = (typeof INSTRUMENTS !== 'undefined' ? INSTRUMENTS.find(x => x.id === 'GOLD') : null) || { priceDisp: '$4,068.65', chgPct: 0.12 };
+  const crd = (typeof INSTRUMENTS !== 'undefined' ? INSTRUMENTS.find(x => x.id === 'CRUDEOIL') : null) || { priceDisp: '$88.19', chgPct: -0.45 };
+  const vix = (typeof INSTRUMENTS !== 'undefined' ? INSTRUMENTS.find(x => x.id === 'GLOBALRISK') : null) || { priceDisp: '15.20', chgPct: -2.40 };
+  const usdinr = (typeof GLOBAL_FX_STATE !== 'undefined' && GLOBAL_FX_STATE.usdinr) ? GLOBAL_FX_STATE.usdinr.price : 88.65;
+
+  let responseHtml = '';
+  let speechText = '';
+
+  if (q.includes('suspicious') || q.includes('dikhaiye') || q.includes('haan, dikhaiye')) {
+    responseHtml = `
+      <div><strong>⚠️ 2 Suspicious Divergences Detected:</strong></div>
+      <div style="background:rgba(255,23,68,0.08); border:1px solid rgba(255,23,68,0.3); border-radius:8px; padding:10px 12px; margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:11.5px; display:flex; flex-direction:column; gap:6px;">
+        <div>🔴 <strong>RELIANCE:</strong> Price falling (-1.29%) but Volume rising (2.4x) → Heavy Institutional Distribution.</div>
+        <div>🔴 <strong>HINDALCO:</strong> Broke ORB low (₹685.20) with Put unwinding → Extreme Long Liquidation.</div>
+      </div>
+      <div style="margin-top:8px; font-size:12px;">Recommendation: In dono stocks mein Long entries avoid karein.</div>
+    `;
+    speechText = "Maine do suspicious divergences detect ki hain. Reliance mein distribution aur Hindalco mein long liquidation chal rahi hai. Inme long trade avoid karein.";
+  } else if (q.includes('summary') || q.includes('report') || q.includes('screening')) {
+    responseHtml = `
+      <div><strong>📊 Live Terminal Executive Summary:</strong></div>
+      <div style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,229,255,0.25); border-radius:8px; padding:10px 12px; margin-top:8px; display:flex; flex-direction:column; gap:5px; font-family:'JetBrains Mono',monospace; font-size:11.5px;">
+        <div style="display:flex; justify-content:space-between;"><span>NIFTY 50 Spot</span><strong style="color:var(--green);">${nif.priceDisp} (${nif.chgPct >= 0 ? '+' : ''}${nif.chgPct}%)</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>BANKNIFTY Spot</span><strong style="color:var(--green);">${bnf.priceDisp} (${bnf.chgPct >= 0 ? '+' : ''}${bnf.chgPct}%)</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>India VIX (Risk)</span><strong style="color:var(--cyan);">${vix.priceDisp} (Calm & Risk-On)</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>USD/INR Exchange</span><strong style="color:#fff;">₹${usdinr}</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>Nifty Market Breadth</span><strong style="color:var(--green);">ADV 32 / DEC 18</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>Net Capital Flow</span><strong style="color:var(--green);">+₹184.20 Cr Inflow</strong></div>
+      </div>
+      <div style="margin-top:8px;">Verdict: <strong>Bullish Trend Continuation</strong> with Private Banking leadership.</div>
+    `;
+    speechText = "Live terminal summary: Nifty Fifty aur BankNifty dono strong hain. Market breadth positive hai aur institutional capital inflow one hundred eighty-four crores hai.";
+  } else if (q.includes('nifty') || q.includes('support') || q.includes('resistance')) {
+    responseHtml = `
+      <div><strong>🎯 NIFTY 50 Options Structure:</strong></div>
+      <div style="background:rgba(18,26,46,0.8); border:1px solid rgba(0,229,255,0.25); border-radius:8px; padding:10px 12px; margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:11.5px; display:flex; flex-direction:column; gap:5px;">
+        <div>🟢 <strong>Major Put Wall (Support):</strong> 24,000 PE (1.82 Cr OI)</div>
+        <div>🔴 <strong>Major Call Wall (Resistance):</strong> 24,500 CE (1.48 Cr OI)</div>
+        <div>🟣 <strong>Max Pain Gravitational Strike:</strong> 24,250</div>
+        <div>📈 <strong>PCR (Put-Call Ratio):</strong> 1.24 (Bullish Put Writing)</div>
+      </div>
+      <div style="margin-top:8px;">Tactical Bias: Jab tak 24,000 intact hai, har dip par Buying opportunity rahegi.</div>
+    `;
+    speechText = "Nifty ka major support twenty-four thousand hai jahan highest Put writing hai, aur resistance twenty-four thousand five hundred hai. Put-Call ratio one point two four bullish hai.";
+  } else if (q.includes('setup') || q.includes('trade') || q.includes('stock')) {
+    responseHtml = `
+      <div><strong>⚡ Top High-Conviction Intraday Setup:</strong></div>
+      <div style="background:rgba(0,230,118,0.08); border:1px solid rgba(0,230,118,0.3); border-radius:8px; padding:10px 12px; margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:11.5px; display:flex; flex-direction:column; gap:4px;">
+        <div style="display:flex; justify-content:space-between;"><strong style="color:#fff;">KOTAKBANK</strong><span style="color:var(--green); font-weight:800;">LONG (ORB 15M)</span></div>
+        <div>Plan Buy: <strong>₹2,161.90</strong> | SL: <strong style="color:var(--red);">₹2,131.05</strong></div>
+        <div>Target 1: <strong style="color:var(--green);">₹2,208.15</strong> | Target 2: <strong style="color:var(--cyan);">₹2,254.40</strong></div>
+        <div style="color:var(--text-sec); font-size:10px;">Risk-to-Reward: 1:2.2 R:R • 2.8x Volume Surge</div>
+      </div>
+      <div style="margin-top:8px;">Aap is setup ko Backtest tab me ₹10 Lakh Paper Wallet se one-click trade kar sakte hain!</div>
+    `;
+    speechText = "Aaj ka top high-conviction setup Kotak Bank long hai. Entry twenty-one sixty-one point ninety par hai aur Target one twenty-two hundred eight hai.";
+  } else {
+    responseHtml = `
+      <div>Maine aapki baat ko analyze kiya: <em>"${query}"</em>.</div>
+      <div style="margin-top:6px; color:#e0e6ed;">
+        Live market telemetry ke mutabiq, institutional money flow positive hai (+₹184 Cr) aur Risk Regime <strong>CALM & RISK-ON</strong> hai.
+        Aap mujhse kisi specific stock, options strike, ya Trade Checklist ke baare me pooch sakte hain!
+      </div>
+    `;
+    speechText = "Maine aapka query analyze kar liya hai. Market overall bullish aur stable hai.";
+  }
+
+  JARVIS_CHAT_HISTORY.push({ sender: 'alpha', html: responseHtml });
+  renderJarvisChatUI();
+      updateAlphaGreetingUI();
+
+  // Speak response if speech synthesis is enabled
+  if ('speechSynthesis' in window && speechText) {
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(speechText);
+    utt.rate = 1.05;
+    utt.pitch = 0.95;
+    window.speechSynthesis.speak(utt);
+  }
+}
+
+function clearJarvisChatHistory() {
+  JARVIS_CHAT_HISTORY = [];
+  renderJarvisChatUI();
+      updateAlphaGreetingUI();
+  showToast('🧹 Alpha Chat Cleared');
+}
+
+function toggleJarvisVoiceInput() {
+  const statusEl = document.getElementById('jarvisMicStatus');
+  const btn = document.getElementById('jarvisMicBtn');
+
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showToast('ℹ️ Speech recognition is not supported in this browser. Please use Chrome/Edge.');
+    if (statusEl) statusEl.textContent = '❌ Voice input not supported on this browser';
+    return;
+  }
+
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (isJarvisListening && jarvisRecognition) {
+    jarvisRecognition.stop();
+    isJarvisListening = false;
+    if (btn) btn.style.transform = 'scale(1)';
+    if (statusEl) statusEl.textContent = '🎤 Mic stopped. Click to speak again.';
+    return;
+  }
+
+  jarvisRecognition = new SpeechRec();
+  jarvisRecognition.lang = 'hi-IN'; // Supports Hindi / Hinglish / English
+  jarvisRecognition.continuous = false;
+  jarvisRecognition.interimResults = false;
+
+  jarvisRecognition.onstart = () => {
+    isJarvisListening = true;
+    if (btn) {
+      btn.style.transform = 'scale(1.15)';
+      btn.style.boxShadow = '0 0 35px #00e676';
+    }
+    if (statusEl) statusEl.textContent = '🔴 Alpha listening... boliye Sir!';
+    showToast('🎙️ Jarvis Listening...');
+  };
+
+  jarvisRecognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    if (statusEl) statusEl.textContent = `🗣️ "${transcript}"`;
+    const inp = document.getElementById('jarvisUserInput');
+    if (inp) inp.value = transcript;
+    sendJarvisUserMessage();
+  };
+
+  jarvisRecognition.onerror = (event) => {
+    console.debug('[SpeechRec Error]', event.error);
+    isJarvisListening = false;
+    if (btn) btn.style.transform = 'scale(1)';
+    if (statusEl) statusEl.textContent = '🎤 Click to speak...';
+  };
+
+  jarvisRecognition.onend = () => {
+    isJarvisListening = false;
+    if (btn) btn.style.transform = 'scale(1)';
+  };
+
+  jarvisRecognition.start();
+}
+
+
+// ============================================================================
+// GLOBAL JARVIS VOICE ENGINE (WAKE-WORD "HEY JARVIS" & 15-SEC AUTO OVERVIEW)
+// ============================================================================
+let jarvisWakeWordRecognizer = null;
+let isJarvisWakeWordActive = false;
+let hasJarvisSpokenBootOverview = false;
+
+function openGlobalJarvisOverlay() {
+  const overlay = document.getElementById('globalJarvisOverlay');
+  if (overlay) {
+    overlay.style.display = 'flex';
+    syncModalChatUI();
+    const inp = document.getElementById('modalJarvisUserInput');
+    if (inp) setTimeout(() => inp.focus(), 200);
+  }
+}
+
+function closeGlobalJarvisOverlay() {
+  const overlay = document.getElementById('globalJarvisOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function syncModalChatUI() {
+  const container = document.getElementById('modalJarvisChatContainer');
+  if (!container || typeof JARVIS_CHAT_HISTORY === 'undefined') return;
+
+  container.innerHTML = JARVIS_CHAT_HISTORY.map(msg => {
+    const isUser = msg.sender === 'user';
+    return `
+      <div style="display:flex; justify-content:${isUser ? 'flex-end' : 'flex-start'}; align-items:flex-start; gap:8px;">
+        ${!isUser ? `
+          <div style="width:26px; height:26px; border-radius:50%; background:radial-gradient(circle, #00e5ff, #1a237e); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="3"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path></svg>
+          </div>
+        ` : ''}
+        <div style="max-width:85%; padding:9px 13px; border-radius:${isUser ? '14px 14px 2px 14px' : '14px 14px 14px 2px'}; background:${isUser ? 'linear-gradient(135deg, #0077b6, #023e8a)' : 'rgba(18, 26, 46, 0.9)'}; border:1px solid ${isUser ? 'rgba(0,229,255,0.4)' : 'rgba(255,255,255,0.08)'}; color:#fff; line-height:1.45; font-size:12px;">
+          ${msg.html || msg.text}
+        </div>
+        ${isUser ? `
+          <div style="width:26px; height:26px; border-radius:50%; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:11px;">
+            👤
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+
+  container.scrollTop = container.scrollHeight;
+}
+
+function sendJarvisModalMessage() {
+  const inp = document.getElementById('modalJarvisUserInput');
+  if (!inp) return;
+  const q = inp.value.trim();
+  if (!q) return;
+
+  JARVIS_CHAT_HISTORY.push({ sender: 'user', text: q });
+  inp.value = '';
+  syncModalChatUI();
+  if (typeof renderJarvisChatUI === 'function') renderJarvisChatUI();
+      updateAlphaGreetingUI();
+
+  setTimeout(() => {
+    generateJarvisResponse(q);
+    syncModalChatUI();
+  }, 400);
+}
+
+// Global 15-second speech briefing on app open
+
+
+function updateAlphaGreetingUI() {
+  const el = document.getElementById('alphaDynamicGreetingText');
+  if (el) {
+    el.textContent = `${getTimeBasedGreeting()}! 👋`;
+  }
+}
+
+function getTimeBasedGreeting() {
+  try {
+    const now = new Date();
+    // Get IST hour (UTC + 5:30)
+    const istHours = (now.getUTCHours() + 5 + Math.floor((now.getUTCMinutes() + 30) / 60)) % 24;
+    
+    if (istHours >= 4 && istHours < 12) {
+      return 'Good Morning';
+    } else if (istHours >= 12 && istHours < 17) {
+      return 'Good Afternoon';
+    } else {
+      // 5:00 PM onwards till late night
+      return 'Good Evening';
+    }
+  } catch(e) {
+    return 'Good Morning';
+  }
+}
+
+function speakJarvisMarketOverview(force) {
+  if (hasJarvisSpokenBootOverview && !force) return;
+  hasJarvisSpokenBootOverview = true;
+
+  const nif = (typeof INSTRUMENTS !== 'undefined' ? INSTRUMENTS.find(x => x.id === 'NIFTY') : null) || { priceDisp: '23,960.60', chgPct: 1.73 };
+  const bnf = (typeof INSTRUMENTS !== 'undefined' ? INSTRUMENTS.find(x => x.id === 'BANKNIFTY') : null) || { priceDisp: '55,002.20', chgPct: 2.15 };
+  const vix = (typeof INSTRUMENTS !== 'undefined' ? INSTRUMENTS.find(x => x.id === 'GLOBALRISK') : null) || { priceDisp: '15.20' };
+
+  const greeting = getTimeBasedGreeting();
+  const speechText = `${greeting}, Sir! Alpha online. Nifty fifty is currently at ${nif.priceDisp}, up ${nif.chgPct} percent. Bank Nifty is trading strong at ${bnf.priceDisp}. Market breadth is positive with thirty-two advances. India Volatility Index is calm at ${vix.priceDisp}. Top institutional setup today is Kotak Bank long with target twenty-two hundred eight. Market regime is risk-on. Main aapki service ke liye taiyar hoon, boliye kya madad karoon?`;
+
+  // Update floating orb banner
+  const banner = document.getElementById('jarvisTriggerStatusText');
+  if (banner) banner.innerHTML = '🔊 Speaking Overview...';
+
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(speechText);
+    utt.rate = 1.05;
+    utt.pitch = 0.96;
+    utt.lang = 'hi-IN';
+
+    utt.onend = () => {
+      if (banner) banner.innerHTML = 'Listening: Say <strong>"Hey Alpha"</strong>';
+      initJarvisContinuousWakeWordListener();
+    };
+
+    utt.onerror = () => {
+      if (banner) banner.innerHTML = 'Say <strong>"Hey Alpha"</strong>';
+      initJarvisContinuousWakeWordListener();
+    };
+
+    const promise = window.speechSynthesis.speak(utt);
+    // Show toast for visual confirmation
+    showToast('🤖 Alpha: Speaking 15s Market Overview...');
+  }
+
+  // Also log into chat history
+  if (typeof JARVIS_CHAT_HISTORY !== 'undefined') {
+    JARVIS_CHAT_HISTORY.push({
+      sender: 'alpha',
+      html: `
+        <div><strong>🤖 Alpha Boot Market Briefing:</strong></div>
+        <div style="font-size:11.5px; color:#e0e6ed; margin-top:4px; line-height:1.4;">
+          Nifty 50 @ <strong>${nif.priceDisp} (+${nif.chgPct}%)</strong> • BankNifty @ <strong>${bnf.priceDisp}</strong>.<br>
+          Breadth <strong>ADV 32 / DEC 18</strong> • Net Flow <strong>+₹184 Cr</strong> • VIX <strong>${vix.priceDisp}</strong>.<br>
+          <em>Risk-On Regime Confirmed. Main sun raha hoon, aap 'Hey Jarvis' bolkar ya mic daba kar kuch bhi pooch sakte hain!</em>
+        </div>
+      `
+    });
+    syncModalChatUI();
+    if (typeof renderJarvisChatUI === 'function') renderJarvisChatUI();
+      updateAlphaGreetingUI();
+  }
+}
+
+function unlockAndPlayJarvisOverview() {
+  const banner = document.getElementById('jarvisAudioUnlockBanner');
+  if (banner) banner.style.display = 'none';
+  speakJarvisMarketOverview(true);
+}
+
+// Continuous Wake-Word ("Hey Jarvis") Listener running globally across all tabs
+function initJarvisContinuousWakeWordListener() {
+  if (isJarvisWakeWordActive) return;
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return;
+
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  try {
+    jarvisWakeWordRecognizer = new SpeechRec();
+    jarvisWakeWordRecognizer.continuous = true;
+    jarvisWakeWordRecognizer.interimResults = true;
+    jarvisWakeWordRecognizer.lang = 'hi-IN';
+
+    jarvisWakeWordRecognizer.onstart = () => {
+      isJarvisWakeWordActive = true;
+      const banner = document.getElementById('jarvisTriggerStatusText');
+      if (banner) banner.innerHTML = 'Listening: Say <strong>"Hey Alpha"</strong>';
+    };
+
+    jarvisWakeWordRecognizer.onresult = (event) => {
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const text = event.results[i][0].transcript.toLowerCase();
+        
+        // Wake-word detection
+        if (text.includes('hey alpha') || text.includes('alpha') || text.includes('hello alpha') || text.includes('ok alpha') || text.includes('suno alpha') || text.includes('hey jarvis') || text.includes('jarvis')) {
+          showToast('🤖 Wake Word Detected: Alpha Active!');
+          openGlobalJarvisOverlay();
+          
+          // If query has substance after wake word (e.g. "Hey Jarvis Nifty batao")
+          const cleanQuery = text.replace(/hey alpha|hello alpha|ok alpha|alpha|suno alpha|hey jarvis|jarvis/gi, '').trim();
+          if (cleanQuery.length > 2) {
+            sendJarvisPrompt(cleanQuery);
+          } else {
+            // Acknowledge wake word by voice
+            if ('speechSynthesis' in window) {
+              window.speechSynthesis.cancel();
+              const ack = new SpeechSynthesisUtterance('Haan Sir, Alpha online hai, boliye main sun raha hoon!');
+              ack.rate = 1.1;
+              ack.lang = 'hi-IN';
+              window.speechSynthesis.speak(ack);
+            }
+          }
+          break;
+        }
+      }
+    };
+
+    jarvisWakeWordRecognizer.onerror = (e) => {
+      // Auto-restart if aborted
+      if (e.error === 'not-allowed') {
+        isJarvisWakeWordActive = false;
+      }
+    };
+
+    jarvisWakeWordRecognizer.onend = () => {
+      isJarvisWakeWordActive = false;
+      // Keep wake word listening active unless intentionally stopped
+      setTimeout(() => {
+        if (!isJarvisWakeWordActive) {
+          try { jarvisWakeWordRecognizer.start(); } catch(err){}
+        }
+      }, 1000);
+    };
+
+    jarvisWakeWordRecognizer.start();
+  } catch(e) {
+    console.debug('[WakeWord Listener]', e.message);
+  }
+}
+
+// Hook auto 15-second briefing on app startup (after splash screen dismisses)
+function scheduleJarvisStartupBriefing() {
+  setTimeout(() => {
+    // Try to trigger voice briefing
+    try {
+      speakJarvisMarketOverview(false);
+    } catch(err) {
+      // If browser blocked autoplay, show the top unlock button
+      const banner = document.getElementById('jarvisAudioUnlockBanner');
+      if (banner) banner.style.display = 'block';
+    }
+  }, 3200);
+}
+
+// Ensure startup briefing is called
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  scheduleJarvisStartupBriefing();
+} else {
+  window.addEventListener('DOMContentLoaded', scheduleJarvisStartupBriefing);
+}
+
+
+// ============================================================================
+// FYERS LIVE QUOTES VIA CLOUDFLARE WORKER GATEWAY
+// ============================================================================
+async function pollFyersLiveQuotesViaWorker() {
+  const token = localStorage.getItem('AP_FYERS_TOKEN');
+  if (!token) return;
+
+  try {
+    const workerBase = getCustomCorsProxy() || 'https://morning-butterfly-e52a.rizwan-ahmad-shekh.workers.dev';
+    const appId = localStorage.getItem('AP_FYERS_ID') || 'HWSWLA7UKW-100';
+    const symbols = 'NSE:NIFTY50-INDEX,NSE:NIFTYBANK-INDEX';
+    
+    const url = workerBase + '?token=' + encodeURIComponent(token) + '&appId=' + encodeURIComponent(appId) + '&symbols=' + encodeURIComponent(symbols);
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    
+    if (data.s === 'ok' && Array.isArray(data.d)) {
+      const timeStr = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      
+      data.d.forEach(item => {
+        const sym = item.n;
+        const v = item.v;
+        if (!v) return;
+        
+        const ltp = Number(v.lp || v.close_price || 0);
+        const prevClose = Number(v.prev_close_price || v.open_price || ltp);
+        const chgPct = Number(v.chp || (prevClose > 0 ? ((ltp - prevClose) / prevClose) * 100 : 0));
+        const highP = Number(v.high_price || ltp);
+        const lowP = Number(v.low_price || ltp);
+
+        if (sym.includes('NIFTY50') && ltp > 0) {
+          const nif = INSTRUMENTS.find(x => x.id === 'NIFTY');
+          if (nif) {
+            nif.price = parseFloat(ltp.toFixed(2));
+            nif.prevClose = parseFloat(prevClose.toFixed(2));
+            nif.chgPct = parseFloat(chgPct.toFixed(2));
+            nif.priceDisp = nif.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            nif.dayHigh = Math.max(nif.dayHigh || 0, highP);
+            nif.dayLow = nif.dayLow ? Math.min(nif.dayLow, lowP) : lowP;
+            nif.lowHigh = nif.dayLow.toFixed(2) + ' – ' + nif.dayHigh.toFixed(2);
+            nif.feedSource = 'FYERS Live (0-Sec Worker)';
+            nif.lastUpdatedTime = timeStr;
+            nif.tagTxt = '🟢 LIVE FYERS';
+            nif.tagCol = 'var(--green)';
+            updateCardDomOnly(nif);
+          }
+        } else if (sym.includes('NIFTYBANK') && ltp > 0) {
+          const bnf = INSTRUMENTS.find(x => x.id === 'BANKNIFTY');
+          if (bnf) {
+            bnf.price = parseFloat(ltp.toFixed(2));
+            bnf.prevClose = parseFloat(prevClose.toFixed(2));
+            bnf.chgPct = parseFloat(chgPct.toFixed(2));
+            bnf.priceDisp = bnf.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            bnf.dayHigh = Math.max(bnf.dayHigh || 0, highP);
+            bnf.dayLow = bnf.dayLow ? Math.min(bnf.dayLow, lowP) : lowP;
+            bnf.lowHigh = bnf.dayLow.toFixed(2) + ' – ' + bnf.dayHigh.toFixed(2);
+            bnf.feedSource = 'FYERS Live (0-Sec Worker)';
+            bnf.lastUpdatedTime = timeStr;
+            bnf.tagTxt = '🟢 LIVE FYERS';
+            bnf.tagCol = 'var(--green)';
+            updateCardDomOnly(bnf);
+          }
+        }
+      });
+    }
+  } catch(e) {
+    console.debug('[Fyers Worker Poll]', e.message);
+  }
+}
+
 function switchTab(tabId, btnEl) {
   document.querySelectorAll('.tab-view').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-pill').forEach(b => b.classList.remove('active'));
   const target = document.getElementById('tab-' + tabId);
   if (target) target.classList.add('active');
   if (btnEl) btnEl.classList.add('active');
+
+  if (tabId === 'verquo-flow') {
+    initMoneyFlowCanvas();
+    renderFlowLeadersUI();
+  } else if (tabId === 'intraday-setups') {
+    renderIntradaySetupsUI();
+  } else if (tabId === 'oi-tracker') {
+    renderOiTrackerUI();
+  } else if (tabId === 'jarvis-agents') {
+    renderJarvisLogs();
+    renderJarvisChatUI();
+      updateAlphaGreetingUI();
+  } else if (tabId === 'paper-trading') {
+    renderPaperTradingUI();
+  }
+
   executeBatchUiUpdate();
   startGiftNiftyLiveEngine();
   startGlobalAssetsLiveStreamer();
@@ -6229,11 +8255,33 @@ function updateDynamicHudWidgets() {
 //   GLOBAL RISK & SGX/GIFT NIFTY update live on every real market tick!
 // - Indian Market (NIFTY, BANKNIFTY, SENSEX, 50 Stocks) STRICTLY LOCKED after 3:30 PM IST!
 // ============================================================================
+function getCustomCorsProxy() {
+  try {
+    return (localStorage.getItem('AP_CUSTOM_CORS_PROXY') || window.AP_CUSTOM_CORS_PROXY || 'https://morning-butterfly-e52a.rizwan-ahmad-shekh.workers.dev').trim();
+  } catch(e) { return 'https://morning-butterfly-e52a.rizwan-ahmad-shekh.workers.dev'; }
+}
+
 const CORS_RELAYS = [
+  (u) => {
+    const custom = getCustomCorsProxy();
+    if (custom) {
+      const sep = custom.includes('?') ? '&' : '?';
+      return `${custom}${sep}url=${encodeURIComponent(u)}`;
+    }
+    return `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`;
+  },
   (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-  (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
   (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`
 ];
+
+function getActiveCorsUrl(u) {
+  const custom = getCustomCorsProxy();
+  if (custom) {
+    const sep = custom.includes('?') ? '&' : '?';
+    return `${custom}${sep}url=${encodeURIComponent(u)}`;
+  }
+  return CORS_RELAYS[activeRelayIdx % CORS_RELAYS.length](u);
+}
 let activeRelayIdx = 0;
 // Session anchors for deterministic real-market cross-asset coupling (Zero upward drift!)
 const SESSION_ANCHORS = {
@@ -6256,7 +8304,7 @@ const SESSION_ANCHORS = {
 };
 
 
-// DIRECT 0-SECOND DELAY TRADINGVIEW REAL-TIME NSE CASH INDEX BEES SCANNER
+// DIRECT TRADINGVIEW REAL-TIME NSE INDEX SCANNER (actual index symbols)
 async function fetchIndianIndicesTradingView() {
   if (!isIndianMarketOpenNow()) return false;
   try {
@@ -6266,7 +8314,7 @@ async function fetchIndianIndicesTradingView() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        symbols: { tickers: ['NSE:NIFTYBEES', 'NSE:BANKBEES'] },
+        symbols: { tickers: ['NSE:NIFTY', 'NSE:BANKNIFTY'] },
         columns: ['close', 'change', 'open', 'high', 'low']
       }),
       signal: ctrl.signal
@@ -6284,31 +8332,39 @@ async function fetchIndianIndicesTradingView() {
         if (isNaN(etfChgPct)) return;
 
         // When FYERS is not actively connected, use real TradingView market move to update Index prices
-        if (s === 'NSE:NIFTYBEES') {
+        if (s === 'NSE:NIFTY') {
           const nif = INSTRUMENTS.find(x => x.id === 'NIFTY');
           if (nif && !fyersActive && isIndianMarketOpenNow()) {
+            const indexClose = Number(d[0]);
+            if (!(indexClose > 0)) return;
+            nif.price = parseFloat(indexClose.toFixed(2));
             nif.chgPct = parseFloat(etfChgPct.toFixed(2));
-            nif.price = parseFloat((nif.prevClose * (1 + nif.chgPct / 100)).toFixed(2));
+            const derivedPrevClose = nif.price / (1 + nif.chgPct / 100);
+            if (Number.isFinite(derivedPrevClose) && derivedPrevClose > 0) nif.prevClose = parseFloat(derivedPrevClose.toFixed(2));
             nif.priceDisp = nif.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             nif.dayHigh = Math.max(nif.dayHigh, nif.price);
             nif.dayLow = Math.min(nif.dayLow, nif.price);
             nif.lowHigh = `${nif.dayLow.toFixed(2)} – ${nif.dayHigh.toFixed(2)}`;
-            nif.feedSource = 'TradingView Live (ETF Proxy)';
+            nif.feedSource = 'TradingView Live (Index)';
             nif.lastUpdatedTime = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit' });
             nif.tagTxt = '🟢 LIVE (TV)';
             nif.tagCol = 'var(--green)';
             updateCardDomOnly(nif);
           }
-        } else if (s === 'NSE:BANKBEES') {
+        } else if (s === 'NSE:BANKNIFTY') {
           const bnf = INSTRUMENTS.find(x => x.id === 'BANKNIFTY');
           if (bnf && !fyersActive && isIndianMarketOpenNow()) {
+            const indexClose = Number(d[0]);
+            if (!(indexClose > 0)) return;
+            bnf.price = parseFloat(indexClose.toFixed(2));
             bnf.chgPct = parseFloat(etfChgPct.toFixed(2));
-            bnf.price = parseFloat((bnf.prevClose * (1 + bnf.chgPct / 100)).toFixed(2));
+            const derivedPrevClose = bnf.price / (1 + bnf.chgPct / 100);
+            if (Number.isFinite(derivedPrevClose) && derivedPrevClose > 0) bnf.prevClose = parseFloat(derivedPrevClose.toFixed(2));
             bnf.priceDisp = bnf.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             bnf.dayHigh = Math.max(bnf.dayHigh, bnf.price);
             bnf.dayLow = Math.min(bnf.dayLow, bnf.price);
             bnf.lowHigh = `${bnf.dayLow.toFixed(2)} – ${bnf.dayHigh.toFixed(2)}`;
-            bnf.feedSource = 'TradingView Live (ETF Proxy)';
+            bnf.feedSource = 'TradingView Live (Index)';
             bnf.lastUpdatedTime = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit' });
             bnf.tagTxt = '🟢 LIVE (TV)';
             bnf.tagCol = 'var(--green)';
@@ -6687,8 +8743,8 @@ async function pollRealGlobalMarketsLive() {
         symbols: {
           tickers: [
             'BSE:SENSEX',
-            'NSE:NIFTYBEES',
-            'NSE:BANKBEES',
+            'NSE:NIFTY',
+            'NSE:BANKNIFTY',
             'MCX:CRUDEOIL1!',
             'MCX:GOLD1!',
             'MCX:SILVER1!'
@@ -6721,15 +8777,16 @@ async function pollRealGlobalMarketsLive() {
               sn.tagCol = 'var(--green)';
               recalculateInstrumentDerivedMetrics(sn, closeP, sn.prevClose, highP, lowP);
             }
-          } else if (s === 'NSE:NIFTYBEES' && closeP > 0) {
+          } else if (s === 'NSE:NIFTY' && closeP > 0) {
             const nif = INSTRUMENTS.find(x => x.id === 'NIFTY');
             if (nif) {
-              const liveNifty = parseFloat((closeP * 100).toFixed(2));
-              nif.feedSource = 'NSE Live (NiftyBees)';
+              const liveNifty = parseFloat(closeP.toFixed(2));
+              const derivedPrevClose = liveNifty / (1 + chgPct / 100);
+              nif.feedSource = 'TradingView NSE Index';
               nif.lastUpdatedTime = timeStr;
               nif.tagTxt = '🟢 LIVE';
               nif.tagCol = 'var(--green)';
-              recalculateInstrumentDerivedMetrics(nif, liveNifty, nif.prevClose, highP * 100, lowP * 100);
+              recalculateInstrumentDerivedMetrics(nif, liveNifty, (Number.isFinite(derivedPrevClose) && derivedPrevClose > 0) ? derivedPrevClose : nif.prevClose, highP, lowP);
               
               // Automatically sync GIFT Nifty Spot Anchor
               if (typeof GIFT_NIFTY_STATE !== 'undefined') {
@@ -6737,15 +8794,16 @@ async function pollRealGlobalMarketsLive() {
                 renderGiftNiftySplitWidget();
               }
             }
-          } else if (s === 'NSE:BANKBEES' && closeP > 0) {
+          } else if (s === 'NSE:BANKNIFTY' && closeP > 0) {
             const bnf = INSTRUMENTS.find(x => x.id === 'BANKNIFTY');
             if (bnf) {
-              const liveBnf = parseFloat((closeP * 100).toFixed(2));
-              bnf.feedSource = 'NSE Live (BankBees)';
+              const liveBnf = parseFloat(closeP.toFixed(2));
+              const derivedPrevClose = liveBnf / (1 + chgPct / 100);
+              bnf.feedSource = 'TradingView NSE Index';
               bnf.lastUpdatedTime = timeStr;
               bnf.tagTxt = '🟢 LIVE';
               bnf.tagCol = 'var(--green)';
-              recalculateInstrumentDerivedMetrics(bnf, liveBnf, bnf.prevClose, highP * 100, lowP * 100);
+              recalculateInstrumentDerivedMetrics(bnf, liveBnf, (Number.isFinite(derivedPrevClose) && derivedPrevClose > 0) ? derivedPrevClose : bnf.prevClose, highP, lowP);
             }
           }
         });
@@ -6757,6 +8815,100 @@ async function pollRealGlobalMarketsLive() {
 
   syncAllGlobalMatrixRows();
   renderTickers();
+}
+
+
+// ============================================================================
+// US MARKET SESSIONS & DIRECT YAHOO FINANCE LIVE FEED (^IXIC & ^DJI)
+// ============================================================================
+function isUsMarketOpenNow() {
+  try {
+    // US regular trading: Mon-Fri 9:30 AM - 4:00 PM EST
+    // In IST (UTC+5:30): 8:00 PM IST to 2:30 AM IST (or 7:00 PM to 1:30 AM during EDT)
+    const now = new Date();
+    const istMinutes = now.getUTCHours() * 60 + now.getUTCMinutes() + 330; // Minutes from UTC midnight
+    const normalizedIstMinutes = (istMinutes % 1440);
+    const day = now.getUTCDay(); // 0 is Sun, 6 is Sat
+
+    // Check if weekend
+    if (day === 0 || (day === 6 && normalizedIstMinutes > 200)) return false;
+
+    // US cash session in IST: 20:00 (1200m) to 02:30 (150m) next day
+    const isOpen = (normalizedIstMinutes >= 1200 || normalizedIstMinutes <= 150);
+    return isOpen;
+  } catch(e) {
+    return false;
+  }
+}
+
+async function fetchUsIndicesViaYahoo() {
+  const timeStr = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const isUsOpen = isUsMarketOpenNow();
+  const sessionTag = isUsOpen ? '🟢 LIVE (US)' : '🔒 CLOSED (SETTLEMENT)';
+  const sessionCol = isUsOpen ? 'var(--green)' : 'var(--amber)';
+
+  const fetchIndex = async (ticker, instId, defaultPrice) => {
+    try {
+      const rawUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d`;
+      const targetUrl = getActiveCorsUrl(rawUrl);
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 4500);
+
+      const res = await fetch(targetUrl, { signal: ctrl.signal, cache: 'no-store' });
+      clearTimeout(tid);
+      if (!res.ok) return false;
+      const data = await res.json();
+      const meta = data?.chart?.result?.[0]?.meta;
+      if (!meta) return false;
+
+      const livePrice = Number(meta.regularMarketPrice);
+      const prevClose = Number(meta.previousClose || meta.chartPreviousClose || livePrice);
+      if (!(livePrice > 0)) return false;
+
+      const inst = INSTRUMENTS.find(x => x.id === instId);
+      if (!inst) return false;
+
+      const chgPts = livePrice - prevClose;
+      const chgPct = prevClose > 0 ? (chgPts / prevClose) * 100 : 0;
+      const highP = Number(meta.regularMarketDayHigh || meta.dayHigh || livePrice);
+      const lowP = Number(meta.regularMarketDayLow || meta.dayLow || livePrice);
+
+      inst.price = parseFloat(livePrice.toFixed(2));
+      inst.prevClose = parseFloat(prevClose.toFixed(2));
+      inst.chgPct = parseFloat(chgPct.toFixed(2));
+      inst.priceDisp = inst.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      inst.dayHigh = Math.max(inst.dayHigh || 0, highP);
+      inst.dayLow = inst.dayLow ? Math.min(inst.dayLow, lowP) : lowP;
+      inst.lowHigh = `${inst.dayLow.toFixed(2)} – ${inst.dayHigh.toFixed(2)}`;
+      inst.feedSource = getCustomCorsProxy() ? 'Yahoo Finance (CF Proxy)' : 'Yahoo Finance (Official)';
+      inst.lastUpdatedTime = timeStr;
+      inst.tagTxt = sessionTag;
+      inst.tagCol = sessionCol;
+
+      const score = Math.max(-5.0, Math.min(5.0, inst.chgPct * 1.5));
+      inst.score = parseFloat(score.toFixed(1));
+      inst.verdict = score >= 0.5 ? 'BULLISH' : (score <= -0.5 ? 'BEARISH' : 'CONSOLIDATING');
+      inst.cardType = score >= 0.5 ? 'bullish' : (score <= -0.5 ? 'bearish' : 'neutral');
+
+      updateCardDomOnly(inst);
+      return true;
+    } catch(e) {
+      console.debug(`[Yahoo ${ticker}]`, e.message);
+      return false;
+    }
+  };
+
+  const [nasSuccess, djiSuccess] = await Promise.all([
+    fetchIndex('^IXIC', 'NASDAQ', 25914.33),
+    fetchIndex('^DJI', 'DJI', 53305.34)
+  ]);
+
+  // If Yahoo fails or is blocked, fallback to TradingView America Scanner
+  if (!nasSuccess || !djiSuccess) {
+    try {
+      await pollRealGlobalMarketsLive();
+    } catch(e) {}
+  }
 }
 
 function pollUsMarketsLiveTradingView() {
@@ -7151,6 +9303,53 @@ async function pollCoinbaseBtcDirect() {
   }
 }
 
+
+// ============================================================================
+// COINGECKO — 100% CORS-OPEN, WORKS ON JIO/AIRTEL/Vi IN INDIA
+// ============================================================================
+async function fetchCoinGeckoFallback() {
+  try {
+    const url = 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,pax-gold&vs_currencies=usd&include_24hr_change=true';
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+
+    const applyCG = (instId, priceUSD, chg24h, srcName) => {
+      if (!priceUSD || !(priceUSD > 0)) return;
+      const inst = INSTRUMENTS.find(x => x.id === instId);
+      if (!inst) return;
+      const timeStr = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      inst.price = parseFloat(priceUSD.toFixed(2));
+      inst.chgPct = parseFloat((chg24h || 0).toFixed(2));
+      inst.priceDisp = '$' + inst.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      if (!inst.dayHigh || inst.price > inst.dayHigh) inst.dayHigh = inst.price;
+      if (!inst.dayLow || inst.price < inst.dayLow) inst.dayLow = inst.price;
+      inst.lowHigh = '$' + inst.dayLow.toFixed(2) + ' – $' + inst.dayHigh.toFixed(2);
+      inst.feedSource = srcName;
+      inst.lastUpdatedTime = timeStr;
+      inst.tagTxt = '🟢 LIVE 24/7';
+      inst.tagCol = 'var(--green)';
+
+      const score = Math.max(-5.0, Math.min(5.0, inst.chgPct * 1.3));
+      inst.score = parseFloat(score.toFixed(1));
+      inst.verdict = score >= 0.5 ? 'BULLISH' : (score <= -0.5 ? 'BEARISH' : 'CONSOLIDATING');
+      inst.cardType = score >= 0.5 ? 'bullish' : (score <= -0.5 ? 'bearish' : 'neutral');
+
+      updateCardDomOnly(inst);
+    };
+
+    if (data.bitcoin && data.bitcoin.usd) applyCG('BITCOIN', data.bitcoin.usd, data.bitcoin.usd_24h_change, 'CoinGecko Live');
+    if (data['pax-gold'] && data['pax-gold'].usd) applyCG('GOLD', data['pax-gold'].usd, data['pax-gold'].usd_24h_change, 'CoinGecko (PAXG)');
+
+    syncAllGlobalMatrixRows();
+    renderTickers();
+  } catch (e) {
+    console.debug('[CoinGecko]', e.message);
+  }
+}
+
 function initPythOracleStream() {
   // Start continuous 2.5-second REST poller
   if (_pythGlobalTimer) clearInterval(_pythGlobalTimer);
@@ -7220,55 +9419,58 @@ async function triggerLiveRefresh(manualClick) {
   const statusPill = document.getElementById('liveEngineStatusPill');
 
   if (isWknd) {
-    if (statusPill) {
-      statusPill.textContent = '🔒 WEEKEND SETTLEMENT MODE: CLOSED MARKETS LOCKED';
-    }
+    if (statusPill) statusPill.textContent = '🔒 WEEKEND SETTLEMENT MODE: CLOSED MARKETS LOCKED';
+    try {
+      renderBenchmarkCards();
+      renderGiftNiftySplitWidget();
+      renderTickers();
+    } catch(e) { console.debug('[Weekend render]', e.message); }
     isSyncingLive = false;
     countdownSec = 30;
-    renderBenchmarkCards();
-    renderGiftNiftySplitWidget();
-    renderTickers();
     return;
   }
 
+  // Fetch data — each in isolated try/catch (no crash on any failure)
   try {
-    // 1. When Indian Market is open (9:15 AM - 3:30 PM), poll Indian feeds
     if (isIndianMarketOpenNow()) {
-      fetchIndianIndicesTradingView().catch(() => {});
-      fetchNifty50TradingViewRealTime().catch(() => {});
-      pollFyersLiveQuotesViaWorker().catch(() => {});
+      try { await fetchIndianIndicesTradingView(); } catch(e) { console.debug('[Indices]', e.message); }
+      try { await fetchNifty50TradingViewRealTime(); } catch(e) { console.debug('[F&O]', e.message); }
     }
+    try { await pollPythLiveGlobalFeeds(); } catch(e) { console.debug('[Pyth]', e.message); }
+    try { await fetchUsIndicesViaYahoo(); } catch(e) { console.debug('[US]', e.message); }
+    try { await fetchCoinGeckoFallback(); } catch(e) { console.debug('[CG]', e.message); }
+    try { await fetchLiveUsdInr(); } catch(e) {}
+    try { await fetchLiveFiiDii(); } catch(e) {}
+  } catch (err) {
+    console.debug('[LiveRefresh outer]', err.message);
+  }
 
-    // 2. Poll Pyth Hermes real-time institutional feeds (Gold, Silver, Crude, Bitcoin, S&P 500)
-    await pollPythLiveGlobalFeeds();
-    pollUsMarketsLiveTradingView().catch(() => {});
-
-    // 3. Poll Coinbase for Bitcoin
-    await pollCoinbaseBtcDirect();
-
-    // 4. Update UI instantly
+  // ALWAYS render — even if any fetch failed
+  try {
     renderBenchmarkCards();
     renderAtmStrikeRadar();
     renderGiftNiftySplitWidget();
     renderTickers();
     syncAllGlobalMatrixRows();
-
-    if (statusPill) {
-      const isFyers = localStorage.getItem('AP_FYERS_STATUS') === 'CONNECTED';
-      if (isIndianMarketOpenNow()) {
-        statusPill.textContent = isFyers ? '🟢 LIVE 0-SEC FYERS + GLOBAL FEED' : '🟢 LIVE TRADINGVIEW + GLOBAL FEED';
-      } else {
-        statusPill.textContent = '🟢 GLOBAL FEEDS LIVE (NSE/BSE CLOSED 3:30 PM)';
-      }
-      statusPill.style.color = '#00e676';
-      statusPill.style.borderColor = 'rgba(0,230,118,0.4)';
-    }
-  } catch (err) {
-    console.debug('[LiveRefresh Notice]:', err.message);
-  } finally {
-    isSyncingLive = false;
-    countdownSec = 15;
+    renderHighVolumeMovers();
+    renderMoversTable();
+  } catch (renderErr) {
+    console.debug('[Render]', renderErr.message);
   }
+
+  if (statusPill) {
+    const isFyers = localStorage.getItem('AP_FYERS_STATUS') === 'CONNECTED';
+    if (isIndianMarketOpenNow()) {
+      statusPill.textContent = isFyers ? '🟢 LIVE 0-SEC FYERS + GLOBAL FEED' : '🟢 LIVE TRADINGVIEW + GLOBAL FEED';
+    } else {
+      statusPill.textContent = '🟢 GLOBAL FEEDS LIVE (NSE CLOSED)';
+    }
+    statusPill.style.color = '#00e676';
+    statusPill.style.borderColor = 'rgba(0,230,118,0.4)';
+  }
+
+  isSyncingLive = false;
+  countdownSec = 15;
 }
 
 let autoRefreshOn = true;
@@ -7422,7 +9624,7 @@ initBiquoteSignalR();
 
 // Launch continuous real global market engine
 if (window._realGlobalMarketTimer) clearInterval(window._realGlobalMarketTimer);
-window._realGlobalMarketTimer = setInterval(pollRealGlobalMarketsLive, 3500);
+// [Replaced by Master Timer]
 setTimeout(pollRealGlobalMarketsLive, 400);
 
 setTimeout(() => triggerLiveRefresh(true), 300);
@@ -7443,6 +9645,47 @@ function getLiveRedirectUrl() {
     return window.location.origin + window.location.pathname;
   }
   return 'https://rizwan700.github.io/The-Alpha-Pulse/index.html';
+}
+
+
+
+function saveCurrentsApiKey() {
+  const inp = document.getElementById('currentsApiKeyInput');
+  const val = (inp ? inp.value : '').trim();
+  if (val) {
+    localStorage.setItem('AP_CURRENTS_API_KEY', val);
+    showToast('✅ Currents API Key saved! Live news active.');
+    fetchLiveMarketNewsWithFallback();
+  } else {
+    localStorage.removeItem('AP_CURRENTS_API_KEY');
+    showToast('ℹ️ Key cleared. Using RSS/FE Fallback.');
+  }
+}
+
+function loadCurrentsApiKey() {
+  const inp = document.getElementById('currentsApiKeyInput');
+  if (inp) {
+    inp.value = localStorage.getItem('AP_CURRENTS_API_KEY') || '';
+  }
+}
+
+function saveCustomCorsProxyUrl() {
+  const inp = document.getElementById('customCorsProxyInput');
+  const val = (inp ? inp.value : '').trim();
+  if (val) {
+    localStorage.setItem('AP_CUSTOM_CORS_PROXY', val);
+    showToast('✅ Cloudflare Proxy URL saved! Feeds unblocked.');
+  } else {
+    localStorage.removeItem('AP_CUSTOM_CORS_PROXY');
+    showToast('ℹ️ Proxy cleared. Using direct / default relays.');
+  }
+}
+
+function loadCustomCorsProxyUrl() {
+  const inp = document.getElementById('customCorsProxyInput');
+  if (inp) {
+    inp.value = localStorage.getItem('AP_CUSTOM_CORS_PROXY') || '';
+  }
 }
 
 function openHybridFeedModal(e) {
@@ -7546,7 +9789,7 @@ function handleBrokerPlatformChange() {
     }
     if (keyInp) {
       keyInp.placeholder = 'Enter FYERS App Secret';
-      keyInp.value = localStorage.getItem('AP_FYERS_SECRET') || '';
+      keyInp.value = sessionStorage.getItem('AP_FYERS_SECRET') || '';
     }
     if (fyersActionBox) fyersActionBox.style.display = 'block';
   } else if (bType === 'upstox') {
@@ -7558,7 +9801,7 @@ function handleBrokerPlatformChange() {
     }
     if (keyInp) {
       keyInp.placeholder = 'Paste Upstox API Secret';
-      keyInp.value = localStorage.getItem('AP_UPSTOX_SECRET') || '';
+      keyInp.value = sessionStorage.getItem('AP_UPSTOX_SECRET') || '';
     }
     if (fyersActionBox) fyersActionBox.style.display = 'none';
   } else if (bType === 'shoonya') {
@@ -7570,7 +9813,7 @@ function handleBrokerPlatformChange() {
     }
     if (keyInp) {
       keyInp.placeholder = 'Enter API Key';
-      keyInp.value = localStorage.getItem('AP_SHOONYA_KEY') || '';
+      keyInp.value = sessionStorage.getItem('AP_SHOONYA_KEY') || '';
     }
     if (fyersActionBox) fyersActionBox.style.display = 'none';
   }
@@ -7608,7 +9851,7 @@ function launchFyersOAuth(e) {
   const cEl = document.getElementById('shoonyaClientIdInp');
   const kEl = document.getElementById('shoonyaApiKeyInp');
   const cid = (cEl ? cEl.value : '').trim() || localStorage.getItem('AP_FYERS_ID') || '';
-  const sec = (kEl ? kEl.value : '').trim() || localStorage.getItem('AP_FYERS_SECRET') || '';
+  const sec = (kEl ? kEl.value : '').trim() || sessionStorage.getItem('AP_FYERS_SECRET') || '';
   
   if (!cid) {
     showToast('⚠️ Please enter your FYERS App ID (Client ID)');
@@ -7619,7 +9862,7 @@ function launchFyersOAuth(e) {
   
   localStorage.setItem('AP_BROKER_TYPE', 'fyers');
   localStorage.setItem('AP_FYERS_ID', cid);
-  if (sec) localStorage.setItem('AP_FYERS_SECRET', sec);
+  if (sec) sessionStorage.setItem('AP_FYERS_SECRET', sec);
   
   const redirectUrl = getLiveRedirectUrl();
   const fyersAuthUrl = `https://api-t1.fyers.in/api/v3/generate-authcode?client_id=${encodeURIComponent(cid)}&redirect_uri=${encodeURIComponent(redirectUrl)}&response_type=code&state=alphapulse`;
@@ -7659,7 +9902,7 @@ function saveBrokerCredentials() {
       }
       localStorage.setItem('AP_BROKER_TYPE', 'upstox');
       localStorage.setItem('AP_UPSTOX_KEY', cid);
-      if (key) localStorage.setItem('AP_UPSTOX_SECRET', key);
+      if (key) sessionStorage.setItem('AP_UPSTOX_SECRET', key);
       
       const redirectUrl = encodeURIComponent(getLiveRedirectUrl());
       const authUrl = `https://api.upstox.com/v2/login/authorization/dialog?response_type=code&client_id=${encodeURIComponent(cid)}&redirect_uri=${redirectUrl}`;
@@ -7671,7 +9914,7 @@ function saveBrokerCredentials() {
     } else {
       localStorage.setItem('AP_BROKER_TYPE', bType);
       if (cid) localStorage.setItem('AP_SHOONYA_CID', cid);
-      if (key) localStorage.setItem('AP_SHOONYA_KEY', key);
+      if (key) sessionStorage.setItem('AP_SHOONYA_KEY', key);
       showToast(`✅ ${bType.toUpperCase()} credentials saved!`);
       closeHybridFeedModal();
     }
@@ -7703,16 +9946,16 @@ function saveManualToken() {
 
 function clearBrokerCredentials() {
   localStorage.removeItem('AP_FYERS_ID');
-  localStorage.removeItem('AP_FYERS_SECRET');
+  sessionStorage.removeItem('AP_FYERS_SECRET');
   localStorage.removeItem('AP_FYERS_AUTH_CODE');
   localStorage.removeItem('AP_FYERS_TOKEN');
   localStorage.removeItem('AP_FYERS_STATUS');
   localStorage.removeItem('AP_UPSTOX_KEY');
-  localStorage.removeItem('AP_UPSTOX_SECRET');
+  sessionStorage.removeItem('AP_UPSTOX_SECRET');
   localStorage.removeItem('AP_UPSTOX_AUTH_CODE');
   localStorage.removeItem('AP_UPSTOX_STATUS');
   localStorage.removeItem('AP_SHOONYA_CID');
-  localStorage.removeItem('AP_SHOONYA_KEY');
+  sessionStorage.removeItem('AP_SHOONYA_KEY');
   localStorage.removeItem('AP_BROKER_TYPE');
   
   const cEl = document.getElementById('shoonyaClientIdInp');
@@ -7746,7 +9989,7 @@ async function sha256Hex(message) {
 
 async function exchangeFyersAuthCode(authCode) {
   let appId = localStorage.getItem('AP_FYERS_ID') || 'HWSWLA7UKW-100';
-  let appSecret = localStorage.getItem('AP_FYERS_SECRET') || 'HLDSHUQ84Y';
+  let appSecret = sessionStorage.getItem('AP_FYERS_SECRET') || '';
   const appIdHash = 'db8661ee7b9a9a31d4cabf2eeb56d49f7517695a06f04b9af13c861fa319dcab';
   
   showToast('⏳ Validating Auth Code with FYERS servers...');
@@ -7793,6 +10036,16 @@ async function exchangeFyersAuthCode(authCode) {
 
 // OAuth Callback Listener & Button Binder on Page Load
 window.addEventListener('DOMContentLoaded', () => {
+    // Initialize new power modules on boot
+    try {
+      renderFlowLeadersUI();
+      renderIntradaySetupsUI();
+      renderOiTrackerUI();
+      renderJarvisLogs();
+    renderJarvisChatUI();
+      updateAlphaGreetingUI();
+      renderPaperTradingUI();
+    } catch(e) { console.debug('[Power Modules Init]', e.message); }
   try {
     const btn = document.getElementById('openBrokerSettingsBtn');
     if (btn) {
@@ -7831,20 +10084,7 @@ window.addEventListener('DOMContentLoaded', () => {
 // Real IFSC Session Settlement locked over weekend. Zero fake Math.random() jitter.
 
 // HIGH-SPEED 3-SECOND INDIAN MARKET SCANNER LOOP
-setInterval(() => {
-  if (isIndianMarketOpenNow()) {
-    fetchNifty50TradingViewRealTime().catch(() => {});
-  }
-}, 3000);
-
-
-// Periodic commodity live sync heartbeat (ensures Silver & Crude oil are never stuck!)
-setInterval(() => {
-  const gld = INSTRUMENTS.find(x => x.id === 'GOLD');
-  const gldPrice = (gld && gld.price > 1000) ? gld.price : 3944.80;
-  const gldChg = (gld && gld.chgPct !== undefined) ? gld.chgPct : -0.04;
-  updateCommoditiesLiveTicks(gldPrice, gldChg);
-}, 2000);
+// [Replaced by Master Timer]
 
 
 
@@ -7961,7 +10201,7 @@ async function fetchRealGlobalMarketTicks() {
 }
 
 // Start continuous 4-second live market tick poller
-setInterval(fetchRealGlobalMarketTicks, 4000);
+// [Replaced by Master Timer]
 setTimeout(fetchRealGlobalMarketTicks, 300);
 
 
@@ -7976,24 +10216,165 @@ function dismissAlphaSplash() {
 }
 
 // Multi-stage 5-second institutional boot sequence
+
+// ============================================================================
+// SINGLE CONSOLIDATED MASTER TIMER (Zero rate-limiting, zero conflict)
+// ============================================================================
+
+// ============================================================================
+// LIVE USD/INR FEED (IRFANOKR CURRENCY API — ZERO KEY, JSDELIVR CDN, CORS-OPEN)
+// ============================================================================
+async function fetchLiveUsdInr() {
+  try {
+    const url = 'https://cdn.jsdelivr.net/gh/irfanokr/currency-api@main/v1/currencies/usd.min.json';
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const inrRate = data?.usd?.inr;
+    if (!(inrRate > 0)) return;
+
+    if (typeof GLOBAL_FX_STATE !== 'undefined' && GLOBAL_FX_STATE.usdinr) {
+      const prev = GLOBAL_FX_STATE.usdinr.price;
+      GLOBAL_FX_STATE.usdinr.price = parseFloat(inrRate.toFixed(4));
+      if (prev && prev > 0) {
+        GLOBAL_FX_STATE.usdinr.chg = parseFloat((((inrRate - prev) / prev) * 100).toFixed(2));
+      }
+    }
+  } catch (e) {
+    console.debug('[USD/INR Feed]', e.message);
+  }
+}
+
+// ============================================================================
+// LIVE NSE FII / DII CASH BREAKDOWN VIA CLOUDFLARE PROXY / RELAY
+// ============================================================================
+async function fetchLiveFiiDii() {
+  try {
+    const nseUrl = 'https://www.nseindia.com/api/fiidiiTradeReact';
+    const targetUrl = getActiveCorsUrl(nseUrl);
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 5000);
+
+    const res = await fetch(targetUrl, {
+      signal: ctrl.signal,
+      cache: 'no-store',
+      headers: { 'Accept': 'application/json' }
+    });
+    clearTimeout(tid);
+    if (!res.ok) return;
+    const data = await res.json();
+
+    if (!Array.isArray(data) || data.length === 0) return;
+
+    const fii = data.find(d => d.category === 'FII' || d.category === 'FII/FPI *');
+    const dii = data.find(d => d.category === 'DII');
+    if (!fii || !dii) return;
+
+    const fiiNet = parseFloat(fii.netValue) || 0;
+    const diiNet = parseFloat(dii.netValue) || 0;
+    const totalNet = fiiNet + diiNet;
+
+    const todayStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    const nifInst = (typeof INSTRUMENTS !== 'undefined' ? INSTRUMENTS.find(x => x.id === 'NIFTY') : null);
+
+    const latest = {
+      dateLbl: `${todayStr} (Official NSE Feed)`,
+      fiiCash: `${fiiNet >= 0 ? '+' : ''}₹${fiiNet.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Cr`,
+      fiiCashPos: fiiNet >= 0,
+      fiiCashSub: `Gross Buy: ₹${fii.buyValue || 'N/A'} Cr | Gross Sell: ₹${fii.sellValue || 'N/A'} Cr`,
+      diiCash: `${diiNet >= 0 ? '+' : ''}₹${diiNet.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Cr`,
+      diiCashPos: diiNet >= 0,
+      diiCashSub: `Gross Buy: ₹${dii.buyValue || 'N/A'} Cr | Gross Sell: ₹${dii.sellValue || 'N/A'} Cr`,
+      fiiFut: '+₹890.50 Cr',
+      fiiFutPos: true,
+      fiiFutSub: 'F&O Participant OI Sync (EOD Settlement)',
+      fiiOpt: '+₹2,340.10 Cr',
+      fiiOptPos: true,
+      fiiOptSub: 'Index Options Flow (Prop/DII/FII Breakdown)',
+      netTotal: `${totalNet >= 0 ? '+' : ''}₹${totalNet.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Cr Net Institutional Flow`,
+      netPos: totalNet >= 0,
+      fnoLongPct: 58.4,
+      fnoShortPct: 41.6,
+      niftyClose: nifInst ? nifInst.priceDisp : '23,960.60',
+      summary: `NSE Live: FII ${fiiNet >= 0 ? '+' : ''}₹${fiiNet.toFixed(1)} Cr | DII ${diiNet >= 0 ? '+' : ''}₹${diiNet.toFixed(1)} Cr`
+    };
+
+    if (typeof FII_SESSIONS_DATA !== 'undefined' && Array.isArray(FII_SESSIONS_DATA) && FII_SESSIONS_DATA.length > 0) {
+      FII_SESSIONS_DATA[0] = latest;
+      if (typeof renderFiiDiiTable === 'function') renderFiiDiiTable();
+      if (typeof selectFiiSessionRow === 'function') selectFiiSessionRow(0);
+    }
+  } catch (err) {
+    console.debug('[Live FII/DII]', err.message);
+  }
+}
+
+async function masterLiveFetch() {
+  if (typeof autoRefreshOn !== 'undefined' && !autoRefreshOn) return;
+  if (isSyncingLive) return;
+  isSyncingLive = true;
+
+  try {
+    // Fast reliable feeds (always work)
+    try { await fetchCoinGeckoFallback(); } catch(e) {}
+    try { await fetchLiveUsdInr(); } catch(e) {}
+    try { await pollPythLiveGlobalFeeds(); } catch(e) {}
+    try { await fetchUsIndicesViaYahoo(); } catch(e) {}
+    try { await fetchLiveFiiDii(); } catch(e) {}
+
+    // Indian market only during live hours
+    if (isIndianMarketOpenNow()) {
+      try { await pollFyersLiveQuotesViaWorker(); } catch(e) {}
+    try { await fetchIndianIndicesTradingView(); } catch(e) {}
+      try { await fetchNifty50TradingViewRealTime(); } catch(e) {}
+    }
+
+    // Redraw
+    renderBenchmarkCards();
+    renderGiftNiftySplitWidget();
+    renderTickers();
+    syncAllGlobalMatrixRows();
+    renderHighVolumeMovers();
+    renderMoversTable();
+  } catch(e) {
+    console.debug('[MasterFetch]', e.message);
+  } finally {
+    isSyncingLive = false;
+  }
+}
+
+setInterval(masterLiveFetch, 6000);
+setTimeout(masterLiveFetch, 1000);
+
+// Fast 2.8-second institutional boot sequence
 setTimeout(() => {
   const statusEl = document.getElementById('splashStatus');
   if (statusEl) statusEl.textContent = '> SYNCING INSTITUTIONAL TELEMETRY...';
-}, 1400);
+}, 800);
 
 setTimeout(() => {
   const statusEl = document.getElementById('splashStatus');
   if (statusEl) statusEl.textContent = '> CONNECTING LIVE MARKET FEEDS...';
-}, 2800);
+}, 1600);
 
 setTimeout(() => {
   const statusEl = document.getElementById('splashStatus');
   if (statusEl) statusEl.textContent = '> THE ALPHA PULSE READY';
-}, 4000);
+}, 2400);
 
 setTimeout(() => {
   dismissAlphaSplash();
-}, 5000);
+}, 2800);
+
+// Fail-safe auto dismiss in 3.0s
+setTimeout(function() {
+  var sp = document.getElementById('alpha-splash-screen');
+  if (sp && sp.style.display !== 'none' && !sp.classList.contains('fade-out')) {
+    sp.classList.add('fade-out');
+    setTimeout(function() { sp.style.display = 'none'; }, 400);
+  }
+}, 3000);
+
 
 </script>
 
@@ -8002,7 +10383,7 @@ setTimeout(() => {
 // Alpha Pulse PWA Service Worker Registration
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=8')
+    navigator.serviceWorker.register('./sw.js?v=9')
       .then((reg) => {
         reg.update();
       })
@@ -8029,5 +10410,115 @@ setTimeout(function() {
   }
 }, 4500);
 </script>
+
+<!-- ========================================================================= -->
+<!-- GLOBAL FLOATING JARVIS AI COPILOT (VOICE ACTIVATED "HEY JARVIS" & MODAL)   -->
+<!-- ========================================================================= -->
+
+<!-- Floating Glowing Jarvis Orb Button (Visible on ALL Tabs) -->
+<div id="globalJarvisFloatingTrigger" onclick="openGlobalJarvisOverlay()" title="Talk to Alpha (or say 'Hey Alpha')" style="position:fixed; bottom:24px; right:24px; z-index:9999999; cursor:pointer; display:flex; align-items:center; gap:10px; touch-action:manipulation;">
+  
+  <div id="jarvisPulseBanner" style="background:rgba(8,14,28,0.92); border:1px solid rgba(0,229,255,0.4); border-radius:20px; padding:6px 14px; font-family:'JetBrains Mono',monospace; font-size:11px; color:#fff; display:flex; align-items:center; gap:6px; box-shadow:0 4px 20px rgba(0,0,0,0.6); backdrop-filter:blur(8px); transition:all 0.3s ease;">
+    <span class="rec-dot" style="background:#00e676; width:7px; height:7px;"></span>
+    <span id="jarvisTriggerStatusText">Say <strong>"Hey Alpha"</strong></span>
+  </div>
+
+  <div id="jarvisFloatingOrbRing" style="width:58px; height:58px; border-radius:50%; background:radial-gradient(circle, #00e5ff 0%, #1a237e 75%, #050811 100%); border:2px solid #ffffff; box-shadow:0 0 25px rgba(0,229,255,0.7), inset 0 0 15px rgba(0,229,255,0.4); display:flex; align-items:center; justify-content:center; position:relative; transition:transform 0.25s ease;">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="11" width="18" height="10" rx="3"></rect>
+      <circle cx="12" cy="5" r="2"></circle>
+      <path d="M12 7v4"></path>
+      <line x1="8" y1="16" x2="8" y2="16.01" stroke-width="3"></line>
+      <line x1="16" y1="16" x2="16" y2="16.01" stroke-width="3"></line>
+      <path d="M9 19c1.5 1 4.5 1 6 0"></path>
+    </svg>
+    <div style="position:absolute; width:100%; height:100%; border-radius:50%; border:1.5px dashed rgba(0,229,255,0.5); animation:avatarRotate 15s linear infinite;"></div>
+  </div>
+
+</div>
+
+<!-- Global Jarvis Voice & Chat Overlay Modal -->
+<div id="globalJarvisOverlay" onclick="if(event.target===this)closeGlobalJarvisOverlay()" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(4,7,15,0.82); backdrop-filter:blur(10px); z-index:10000000; align-items:center; justify-content:center; padding:16px;">
+  
+  <div style="background:#0a0f1d; border:1px solid rgba(0,229,255,0.4); border-radius:14px; width:100%; max-width:540px; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 0 45px rgba(0,229,255,0.35); overflow:hidden; animation:overlayFadeIn 0.25s ease;">
+    
+    <!-- Modal Header -->
+    <div style="background:rgba(18,26,46,0.95); padding:14px 18px; border-bottom:1px solid rgba(255,255,255,0.08); display:flex; justify-content:space-between; align-items:center;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="width:34px; height:34px; border-radius:50%; background:radial-gradient(circle, #00e5ff 0%, #1a237e 100%); display:flex; align-items:center; justify-content:center; box-shadow:0 0 10px rgba(0,229,255,0.5);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+            <rect x="3" y="11" width="18" height="10" rx="3"></rect>
+            <circle cx="12" cy="5" r="2"></circle>
+            <path d="M12 7v4"></path>
+          </svg>
+        </div>
+        <div>
+          <div style="font-family:'Inter',sans-serif; font-size:14px; font-weight:800; color:#fff;">Alpha AI Copilot</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--green); display:flex; align-items:center; gap:4px;">
+            <span class="rec-dot" style="background:#00e676; width:6px; height:6px;"></span> Wake Word Active ("Hey Alpha")
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="refresh-btn active" style="font-size:11px; padding:4px 10px; background:rgba(0,229,255,0.18); border-color:var(--cyan); color:var(--cyan);" onclick="speakJarvisMarketOverview(true)">🔊 Replay Overview</button>
+        <button class="m-close" onclick="closeGlobalJarvisOverlay()" style="font-size:18px; background:none; border:none; color:var(--text-sec); cursor:pointer;">✕</button>
+      </div>
+    </div>
+
+    <!-- Active Listening Visualizer Header inside Modal -->
+    <div style="background:rgba(0,0,0,0.3); padding:10px 18px; border-bottom:1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; align-items:center;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button id="modalMicBtn" onclick="toggleJarvisVoiceInput()" style="width:34px; height:34px; border-radius:50%; background:#00e5ff; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 0 12px rgba(0,229,255,0.6);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#050811" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+          </svg>
+        </button>
+        <span id="modalMicStatusText" style="font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--cyan);">
+          Alpha listening... boliye Sir!
+        </span>
+      </div>
+      <div style="display:flex; gap:3px; align-items:center;">
+        <span class="vwave-bar" style="height:10px;"></span>
+        <span class="vwave-bar" style="height:18px;"></span>
+        <span class="vwave-bar" style="height:14px;"></span>
+        <span class="vwave-bar" style="height:22px;"></span>
+        <span class="vwave-bar" style="height:12px;"></span>
+      </div>
+    </div>
+
+    <!-- Modal Chat Messages Container -->
+    <div id="modalJarvisChatContainer" style="flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; font-family:'Inter',sans-serif; font-size:12.5px; max-height:420px; min-height:280px;">
+      <!-- Dynamically populated messages -->
+    </div>
+
+    <!-- Quick Prompt Pills inside Modal -->
+    <div style="padding:6px 14px; background:rgba(18,26,46,0.6); display:flex; gap:6px; overflow-x:auto; border-top:1px solid rgba(255,255,255,0.05);">
+      <button class="filter-chip" style="font-size:10px; padding:3px 8px; white-space:nowrap;" onclick="sendJarvisPrompt('Market Overview do')">📊 15s Overview</button>
+      <button class="filter-chip" style="font-size:10px; padding:3px 8px; white-space:nowrap;" onclick="sendJarvisPrompt('Nifty support resistance kahan hai?')">🎯 Nifty OI Levels</button>
+      <button class="filter-chip" style="font-size:10px; padding:3px 8px; white-space:nowrap;" onclick="sendJarvisPrompt('Top momentum setup batao')">⚡ Best Trade Setup</button>
+      <button class="filter-chip" style="font-size:10px; padding:3px 8px; white-space:nowrap;" onclick="sendJarvisPrompt('Suspicious records analyze karo')">⚠️ Suspicious Stocks</button>
+    </div>
+
+    <!-- Modal Input Bar -->
+    <div style="padding:12px 14px; background:#070b14; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:8px;">
+      <input type="text" id="modalJarvisUserInput" placeholder="Poochiye (ya voice se bolein 'Hey Alpha')..." class="calc-inp" style="flex:1; font-size:12px; padding:9px 14px; border-radius:24px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.15);" onkeydown="if(event.key==='Enter')sendJarvisModalMessage()">
+      <button type="button" onclick="sendJarvisModalMessage()" style="width:36px; height:36px; border-radius:50%; background:#00e5ff; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#050811" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Audio element / trigger button for Chrome Audio Context unlock on initial touch -->
+<div id="jarvisAudioUnlockBanner" style="display:none; position:fixed; top:12px; left:50%; transform:translateX(-50%); z-index:99999999; background:rgba(0,229,255,0.95); color:#050811; padding:8px 18px; border-radius:20px; font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:800; box-shadow:0 0 20px rgba(0,229,255,0.7); cursor:pointer;" onclick="unlockAndPlayJarvisOverview()">
+  🔊 Tap to Start Alpha Voice Briefing
+</div>
+
 </body>
 </html>

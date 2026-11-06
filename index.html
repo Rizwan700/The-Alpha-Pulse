@@ -10838,7 +10838,7 @@ setTimeout(function() {
 // Alpha Pulse PWA Service Worker Registration
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=9')
+    navigator.serviceWorker.register('./sw.js?v=12')
       .then((reg) => {
         reg.update();
       })
@@ -10871,7 +10871,7 @@ setTimeout(function() {
 <!-- ========================================================================= -->
 
 <!-- Floating Glowing Jarvis Orb Button (Visible on ALL Tabs) -->
-<div id="globalJarvisFloatingTrigger" onclick="openFullScreenOrbMode(); startAlphaDirectListening();" title="Talk to Alpha (or say 'Hey Alpha')" style="position:fixed; bottom:24px; right:24px; z-index:9999999; cursor:pointer; display:flex; align-items:center; gap:10px; touch-action:manipulation;">
+<div id="globalJarvisFloatingTrigger" style="display:none !important;" onclick="openFullScreenOrbMode(); startAlphaDirectListening();" title="Talk to Alpha (or say 'Hey Alpha')" style="position:fixed; bottom:24px; right:24px; z-index:9999999; cursor:pointer; display:flex; align-items:center; gap:10px; touch-action:manipulation;">
   
   <div id="jarvisPulseBanner" style="background:rgba(8,14,28,0.92); border:1px solid rgba(0,229,255,0.4); border-radius:20px; padding:6px 14px; font-family:'JetBrains Mono',monospace; font-size:11px; color:#fff; display:flex; align-items:center; gap:6px; box-shadow:0 4px 20px rgba(0,0,0,0.6); backdrop-filter:blur(8px); transition:all 0.3s ease;">
     <span class="rec-dot" style="background:#00e676; width:7px; height:7px;"></span>
@@ -11038,5 +11038,6 @@ setTimeout(function() {
 
 </div>
 
+<script src="./alpha-ai.js"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 // THE ALPHA PULSE - Service Worker (v6.0.0 - Network-First Live Sync)
-const CACHE_NAME = "alphapulse-live-v12";
+const CACHE_NAME = "alphapulse-live-v16";
 const STATIC_ASSETS = [
   "./manifest.json",
   "./icons/icon-192.png",
